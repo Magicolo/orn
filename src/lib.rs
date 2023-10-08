@@ -1,3 +1,5 @@
+#![no_std]
+
 macro_rules! or {
     ($n: expr, $or: ident, $module: ident $(, $types: ident, $upper: ident, $lower: ident)*) => {
         pub type $or<$($types),*> = $module::Or<$($types),*>;
