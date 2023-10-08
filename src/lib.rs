@@ -4,7 +4,7 @@ macro_rules! or {
 
         pub mod $module {
             #[allow(unused_imports)]
-            use std::{iter, hint::unreachable_unchecked, ops::{Deref, DerefMut}};
+            use core::{iter, hint::unreachable_unchecked, ops::{Deref, DerefMut}};
 
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Or<$($types),*> { $($upper($types)),* }
@@ -124,16 +124,6 @@ macro_rules! or {
             impl<$($types: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($types),*> { }
         }
     };
-}
-
-impl<T0, T1> Or2<T0, T1> {
-    #[inline]
-    pub fn result(self) -> Result<T0, T1> {
-        match self {
-            Self::T0(item) => Ok(item),
-            Self::T1(item) => Err(item),
-        }
-    }
 }
 
 or!(0, Or0, or0);
