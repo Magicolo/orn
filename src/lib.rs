@@ -8,6 +8,7 @@ macro_rules! or {
             #[allow(unused_imports)]
             use core::{iter, hint::unreachable_unchecked, ops::{Deref, DerefMut}};
 
+            #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Or<$($types),*> { $($upper($types)),* }
             #[derive(Clone, Copy, Debug)]
