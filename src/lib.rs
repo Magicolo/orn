@@ -15,7 +15,7 @@ macro_rules! or {
 
         pub mod $module {
             #[allow(unused_imports)]
-            use core::{iter, hint::unreachable_unchecked, ops::{Deref, DerefMut}};
+            use core::{iter, ops::{Deref, DerefMut}};
             #[allow(unused_imports)]
             use super::{At, Is};
 
@@ -31,7 +31,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => item.into(),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
 
@@ -40,7 +40,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Or::$upper(item),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
 
@@ -49,7 +49,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Or::$upper(item),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
 
                     }
                 }
@@ -59,7 +59,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Or::$upper(item.deref()),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
 
@@ -68,7 +68,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Or::$upper(item.deref_mut()),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
 
                     }
                 }
@@ -83,7 +83,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Iterator::$upper(item.into_iter()),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
             }
@@ -96,7 +96,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Some(Or::$upper(item.next()?)),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
             }
@@ -107,7 +107,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => Some(Or::$upper(item.next_back()?)),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
             }
@@ -118,7 +118,7 @@ macro_rules! or {
                     match self {
                         $(Self::$upper(item) => item.len(),)*
                         #[allow(unreachable_patterns)]
-                        _ => unsafe { unreachable_unchecked() }
+                        _ => unreachable!()
                     }
                 }
             }
