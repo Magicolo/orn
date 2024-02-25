@@ -9,6 +9,10 @@ pub trait Is<const N: usize> {
     fn is(&self) -> bool;
 }
 
+pub trait Count {
+    const COUNT: usize;
+}
+
 macro_rules! or {
     ($count: expr, $or: ident, $module: ident $(, $index: tt, $upper: ident, $lower: ident)*) => {
         pub type $or<$($upper),*> = $module::Or<$($upper),*>;
@@ -17,7 +21,7 @@ macro_rules! or {
             #[allow(unused_imports)]
             use core::{iter, ops::{Deref, DerefMut}};
             #[allow(unused_imports)]
-            use super::{At, Is};
+            use super::{At, Is, Count};
 
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -72,6 +76,10 @@ macro_rules! or {
 
                     }
                 }
+            }
+
+            impl<$($upper),*> Count for Or<$($upper),*> {
+                const COUNT: usize = $count;
             }
 
             impl<$($upper: IntoIterator),*> IntoIterator for Or<$($upper),*> {
