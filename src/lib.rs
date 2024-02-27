@@ -78,8 +78,26 @@ macro_rules! or {
                 }
             }
 
-            impl<$($upper),*> Count for Or<$($upper),*> {
-                const COUNT: usize = $count;
+            impl<T, $($upper: AsRef<T>),*> AsRef<T> for Or<$($upper),*> {
+                #[inline]
+                fn as_ref(&self) -> &T {
+                    match self {
+                        $(Self::$upper(item) => item.as_ref(),)*
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!()
+                    }
+                }
+            }
+
+            impl<T, $($upper: AsMut<T>),*> AsMut<T> for Or<$($upper),*> {
+                #[inline]
+                fn as_mut(&mut self) -> &mut T {
+                    match self {
+                        $(Self::$upper(item) => item.as_mut(),)*
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!()
+                    }
+                }
             }
 
             impl<$($upper: IntoIterator),*> IntoIterator for Or<$($upper),*> {
@@ -132,6 +150,10 @@ macro_rules! or {
             }
 
             impl<$($upper: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($upper),*> { }
+
+            impl<$($upper),*> Count for Or<$($upper),*> {
+                const COUNT: usize = $count;
+            }
 
             or!(@outer $($upper, $index, $lower),* @ ($($upper),*));
         }
