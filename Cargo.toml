@@ -1,6 +1,6 @@
 [package]
 name = "orn"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2018"
 authors = ["Magicolo <magicololand@gmail.com>"]
 documentation = "https://docs.rs/orn/latest/orn/"
@@ -12,7 +12,7 @@ rust-version = "1.57"
 license = "MIT"
 
 [dependencies]
-serde = { version = "1.0", optional = true, features = ["derive"] }
+serde = { version = "1.0.210", optional = true, features = ["derive"] }
 
 [package.metadata.docs.rs]
 features = ["serde"]
