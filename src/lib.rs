@@ -1,12 +1,12 @@
 #![no_std]
 
-pub trait At<const N: usize> {
+pub trait At<const I: usize> {
     type Item;
     fn at(self) -> Self::Item;
 }
 
-pub trait Is<const N: usize> {
-    fn is(&self) -> bool;
+pub trait Is {
+    fn is(&self, index: usize) -> bool;
 }
 
 pub trait Count {
@@ -15,7 +15,7 @@ pub trait Count {
 
 macro_rules! or {
     ($count: expr, $or: ident, $module: ident $(, $index: tt, $upper: ident, $lower: ident)*) => {
-        pub type $or<$($upper),*> = $module::Or<$($upper),*>;
+        pub type $or<$($upper,)*> = $module::Or<$($upper,)*>;
 
         pub mod $module {
             #[allow(unused_imports)]
@@ -25,11 +25,11 @@ macro_rules! or {
 
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub enum Or<$($upper),*> { $($upper($upper)),* }
+            pub enum Or<$($upper,)*> { $($upper($upper)),* }
             #[derive(Clone, Copy, Debug)]
-            pub enum Iterator<$($upper),*> { $($upper($upper)),* }
+            pub enum Iterator<$($upper,)*> { $($upper($upper)),* }
 
-            impl<$($upper),*> Or<$($upper),*> {
+            impl<$($upper,)*> Or<$($upper,)*> {
                 #[inline]
                 pub fn into<T>(self) -> T where $($upper: Into<T>),* {
                     match self {
@@ -78,7 +78,7 @@ macro_rules! or {
                 }
             }
 
-            impl<T, $($upper: AsRef<T>),*> AsRef<T> for Or<$($upper),*> {
+            impl<T, $($upper: AsRef<T>),*> AsRef<T> for Or<$($upper,)*> {
                 #[inline]
                 fn as_ref(&self) -> &T {
                     match self {
@@ -89,7 +89,7 @@ macro_rules! or {
                 }
             }
 
-            impl<T, $($upper: AsMut<T>),*> AsMut<T> for Or<$($upper),*> {
+            impl<T, $($upper: AsMut<T>),*> AsMut<T> for Or<$($upper,)*> {
                 #[inline]
                 fn as_mut(&mut self) -> &mut T {
                     match self {
@@ -100,7 +100,7 @@ macro_rules! or {
                 }
             }
 
-            impl<$($upper: IntoIterator),*> IntoIterator for Or<$($upper),*> {
+            impl<$($upper: IntoIterator),*> IntoIterator for Or<$($upper,)*> {
                 type IntoIter = Iterator<$($upper::IntoIter,)*>;
                 type Item = Or<$($upper::Item,)*>;
 
@@ -114,7 +114,7 @@ macro_rules! or {
                 }
             }
 
-            impl<$($upper: iter::Iterator),*> iter::Iterator for Iterator<$($upper),*> {
+            impl<$($upper: iter::Iterator),*> iter::Iterator for Iterator<$($upper,)*> {
                 type Item = Or<$($upper::Item,)*>;
 
                 #[inline]
@@ -127,7 +127,7 @@ macro_rules! or {
                 }
             }
 
-            impl<$($upper: iter::DoubleEndedIterator),*> iter::DoubleEndedIterator for Iterator<$($upper),*> {
+            impl<$($upper: iter::DoubleEndedIterator),*> iter::DoubleEndedIterator for Iterator<$($upper,)*> {
                 #[inline]
                 fn next_back(&mut self) -> Option<Self::Item> {
                     match self {
@@ -138,7 +138,7 @@ macro_rules! or {
                 }
             }
 
-            impl<$($upper: iter::ExactSizeIterator),*> iter::ExactSizeIterator for Iterator<$($upper),*> {
+            impl<$($upper: iter::ExactSizeIterator),*> iter::ExactSizeIterator for Iterator<$($upper,)*> {
                 #[inline]
                 fn len(&self) -> usize {
                     match self {
@@ -149,10 +149,25 @@ macro_rules! or {
                 }
             }
 
-            impl<$($upper: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($upper),*> { }
+            impl<$($upper: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($upper,)*> { }
 
-            impl<$($upper),*> Count for Or<$($upper),*> {
+            impl<$($upper,)*> Count for ($($upper,)*) {
                 const COUNT: usize = $count;
+            }
+
+            impl<$($upper,)*> Count for Or<$($upper,)*> {
+                const COUNT: usize = $count;
+            }
+
+            impl<$($upper,)*> Is for Or<$($upper,)*> {
+                #[inline]
+                fn is(&self, index: usize) -> bool {
+                    match (index, self) {
+                        $(($index, Self::$upper(_)) => true,)*
+                        #[allow(unreachable_patterns)]
+                        _ => false,
+                    }
+                }
             }
 
             or!(@outer $($upper, $index, $lower),* @ ($($upper),*));
@@ -182,6 +197,22 @@ macro_rules! or {
             }
         }
 
+        impl<'a, $($uppers),*> At<$index> for &'a ($($uppers,)*) {
+            type Item = &'a $upper;
+            #[inline]
+            fn at(self) -> Self::Item {
+                &self.$index
+            }
+        }
+
+        impl<'a, $($uppers),*> At<$index> for &'a mut ($($uppers,)*) {
+            type Item = &'a mut $upper;
+            #[inline]
+            fn at(self) -> Self::Item {
+                &mut self.$index
+            }
+        }
+
         impl<$($uppers),*> At<$index> for Or<$($uppers,)*> {
             type Item = Option<$upper>;
             #[inline]
@@ -194,13 +225,26 @@ macro_rules! or {
             }
         }
 
-        impl<$($uppers),*> Is<$index> for Or<$($uppers,)*> {
+        impl<'a, $($uppers),*> At<$index> for &'a Or<$($uppers,)*> {
+            type Item = Option<&'a $upper>;
             #[inline]
-            fn is(&self) -> bool {
+            fn at(self) -> Self::Item {
                 match self {
-                    Self::$upper(_) => true,
+                    Or::$upper($lower) => Some($lower),
                     #[allow(unreachable_patterns)]
-                    _ => false,
+                    _ => None,
+                }
+            }
+        }
+
+        impl<'a, $($uppers),*> At<$index> for &'a mut Or<$($uppers,)*> {
+            type Item = Option<&'a mut $upper>;
+            #[inline]
+            fn at(self) -> Self::Item {
+                match self {
+                    Or::$upper($lower) => Some($lower),
+                    #[allow(unreachable_patterns)]
+                    _ => None,
                 }
             }
         }
@@ -212,9 +256,15 @@ or!(1, Or1, or1, 0, T0, t0);
 or!(2, Or2, or2, 0, T0, t0, 1, T1, t1);
 or!(3, Or3, or3, 0, T0, t0, 1, T1, t1, 2, T2, t2);
 or!(4, Or4, or4, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3);
-or!(5, Or5, or5, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4);
-or!(6, Or6, or6, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5);
-or!(7, Or7, or7, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6);
+or!(
+    5, Or5, or5, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4
+);
+or!(
+    6, Or6, or6, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5
+);
+or!(
+    7, Or7, or7, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6
+);
 or!(
     8, Or8, or8, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
     T7, t7
