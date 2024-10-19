@@ -3,7 +3,7 @@
 <p align="center">
     <em> 
 
-A general implementation of the sum type.
+A general implementation of the sum type. Meant to be a generic counterpart to tuples.
     </em>
 </p>
 
