@@ -1,18 +1,22 @@
 [package]
 name = "orn"
 version = "0.4.3"
-edition = "2018"
+edition = "2015"
 authors = ["Magicolo <magicololand@gmail.com>"]
 documentation = "https://docs.rs/orn/latest/orn/"
 description = "A general implementation of the sum type."
 repository = "https://github.com/Magicolo/orn"
-keywords = ["sum-type", "either", "data-structures", "no-std"]
+keywords = ["sum-type", "either", "or", "ADT", "data-structures", "no-std"]
 categories = ["data-structures", "no-std"]
-rust-version = "1.57"
+rust-version = "1.60"
 license = "MIT"
+
+[badges]
+github = { repository = "Magicolo/checkito", workflow = "test" }
+
+[features]
+default = []
+serde = ["dep:serde"]
 
 [dependencies]
 serde = { version = "1.0.210", optional = true, features = ["derive"] }
-
-[package.metadata.docs.rs]
-features = ["serde"]
