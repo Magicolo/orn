@@ -13,7 +13,9 @@ jobs:
       image: ghcr.io/magicolo/rust
     steps:
     - uses: actions/checkout@v4
-    - run: cargo hack build --release --all-targets --verbose --feature-powerset
+    - run: |
+        cargo hack build --release --all-targets --verbose --feature-powerset
+        cargo hack build --release --all-targets --verbose --feature-powerset --rust-version
   clippy:
     runs-on: ubuntu-latest
     container: 
