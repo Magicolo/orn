@@ -1,4 +1,8 @@
 #![no_std]
+use core::{
+    iter,
+    ops::{Deref, DerefMut},
+};
 
 pub trait At<const I: usize> {
     type Item;
@@ -13,236 +17,342 @@ pub trait Count {
     const COUNT: usize;
 }
 
+#[inline]
+fn same<T, F>(item: T, _: F) -> T {
+    item
+}
+
+#[inline]
+fn with<T, U, F: FnOnce(T) -> U>(item: T, map: F) -> U {
+    map(item)
+}
+
+pub type Or0 = or0::Or;
+pub mod or0 {
+    use super::*;
+
+    pub enum Or {}
+
+    impl Count for () {
+        const COUNT: usize = 0;
+    }
+
+    impl Count for Or {
+        const COUNT: usize = 0;
+    }
+}
+
 macro_rules! or {
-    ($count: expr, $or: ident, $module: ident $(, $index: tt, $upper: ident, $lower: ident)*) => {
-        pub type $or<$($upper,)*> = $module::Or<$($upper,)*>;
+    (
+        [$($count: tt, $alias: ident, $module: ident),* $(,)?]
+        [$($index: tt, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident),* $(,)?]
+    ) => {
+        or!(@next [$($count, $alias, $module),*] [$($index, $t, $u, $f, $get, $is, $map),*] []);
+    };
+    (@next [] [] $old: tt) => {};
+    (@next
+        [$count: tt, $alias: ident, $module: ident $(, $counts: tt, $aliases: ident, $modules: ident)*]
+        [$index: tt, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident $(, $new_index: tt, $new_t: ident, $new_u: ident, $new_f: ident, $new_get: ident, $new_is: ident, $new_map: ident)*]
+        [$($old_index: tt, $old_t: ident, $old_u: ident, $old_f: ident, $old_get: ident, $old_is: ident, $old_map: ident),*]
+    ) => {
+        or!(@main
+            $count, $alias, $module
+            [$($old_index, T, U, $old_t, $old_u, $old_f, $old_get, $old_is, $old_map,)* $index, T, U, $t, $u, $f, $get, $is, $map]
+        );
+        or!(@next
+            [$($counts, $aliases, $modules),*]
+            [$($new_index, $new_t, $new_u, $new_f, $new_get, $new_is, $new_map),*]
+            [$($old_index, $old_t, $old_u, $old_f, $old_get, $old_is, $old_map,)* $index, $t, $u, $f, $get, $is, $map]
+        );
+    };
+    (@main $count: tt, $alias: ident, $module: ident [$($index: tt, $same_t: ident, $same_u: ident, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident),*]) => {
+        pub type $alias<$($t,)*> = $module::Or<$($t,)*>;
 
         pub mod $module {
-            #[allow(unused_imports)]
-            use core::{iter, ops::{Deref, DerefMut}};
-            #[allow(unused_imports)]
-            use super::{At, Is, Count};
+            use super::*;
 
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub enum Or<$($upper,)*> { $($upper($upper)),* }
+            pub enum Or<$($t,)*> { $($t($t)),* }
             #[derive(Clone, Copy, Debug)]
-            pub enum Iterator<$($upper,)*> { $($upper($upper)),* }
+            pub enum Iterator<$($t,)*> { $($t($t)),* }
 
-            impl<$($upper,)*> Or<$($upper,)*> {
+            impl<$($t,)*> Or<$($t,)*> {
                 #[inline]
-                pub fn into<T>(self) -> T where $($upper: Into<T>),* {
+                pub fn into<T>(self) -> T where $($t: Into<T>),* {
                     match self {
-                        $(Self::$upper(item) => item.into(),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => item.into(),)*
                     }
                 }
 
                 #[inline]
-                pub const fn as_ref(&self) -> Or<$(&$upper,)*> {
+                pub const fn as_ref(&self) -> Or<$(&$t,)*> {
                     match self {
-                        $(Self::$upper(item) => Or::$upper(item),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Or::$t(item),)*
                     }
                 }
 
                 #[inline]
-                pub fn as_mut(&mut self) -> Or<$(&mut $upper,)*> {
+                pub fn as_mut(&mut self) -> Or<$(&mut $t,)*> {
                     match self {
-                        $(Self::$upper(item) => Or::$upper(item),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Or::$t(item),)*
 
                     }
                 }
 
                 #[inline]
-                pub fn as_deref(&self) -> Or<$(&$upper::Target,)*> where $($upper: Deref),* {
+                pub fn as_deref(&self) -> Or<$(&$t::Target,)*> where $($t: Deref),* {
                     match self {
-                        $(Self::$upper(item) => Or::$upper(item.deref()),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Or::$t(item.deref()),)*
                     }
                 }
 
                 #[inline]
-                pub fn as_deref_mut(&mut self) -> Or<$(&mut $upper::Target,)*> where $($upper: DerefMut),* {
+                pub fn as_deref_mut(&mut self) -> Or<$(&mut $t::Target,)*> where $($t: DerefMut),* {
                     match self {
-                        $(Self::$upper(item) => Or::$upper(item.deref_mut()),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Or::$t(item.deref_mut()),)*
 
+                    }
+                }
+
+                #[inline]
+                pub fn iter(&self) -> Iterator<$(<&$t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a $t: IntoIterator,)* {
+                    self.as_ref().into_iter()
+                }
+
+                #[inline]
+                pub fn iter_mut(&mut self) -> Iterator<$(<&mut $t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a mut $t: IntoIterator,)* {
+                    self.as_mut().into_iter()
+                }
+            }
+
+            impl<$($t,)*> Or<$(&$t,)*> {
+                #[inline]
+                pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
+                    match self {
+                        $(Self::$t(item) => Or::$t(item.clone()),)*
+                    }
+                }
+
+                #[inline]
+                pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
+                    match self {
+                        $(Self::$t(item) => Or::$t(*item),)*
                     }
                 }
             }
 
-            impl<T, $($upper: AsRef<T>),*> AsRef<T> for Or<$($upper,)*> {
+            impl<$($t,)*> Or<$(&mut $t,)*> {
+                #[inline]
+                pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
+                    match self {
+                        $(Self::$t(item) => Or::$t(item.clone()),)*
+                    }
+                }
+
+                #[inline]
+                pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
+                    match self {
+                        $(Self::$t(item) => Or::$t(*item),)*
+                    }
+                }
+            }
+
+            impl<T> Or<$($same_t,)*> {
+                #[inline]
+                pub fn into_inner(self) -> T {
+                    match self {
+                        $(Self::$t(item) => item,)*
+                    }
+                }
+
+                #[inline]
+                pub fn map<U, F: FnOnce(T) -> U>(self, map: F) -> Or<$($same_u,)*> {
+                    match self {
+                        $(Self::$t(item) => Or::$t(map(item)),)*
+                    }
+                }
+
+                #[inline]
+                pub fn map_with<S, U, F: FnOnce(S, T) -> U>(self, state:S, map: F) -> Or<$($same_u,)*> {
+                    match self {
+                        $(Self::$t(item) => Or::$t(map(state, item)),)*
+                    }
+                }
+            }
+
+            impl<T, $($t: AsRef<T>),*> AsRef<T> for Or<$($t,)*> {
                 #[inline]
                 fn as_ref(&self) -> &T {
                     match self {
-                        $(Self::$upper(item) => item.as_ref(),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => item.as_ref(),)*
                     }
                 }
             }
 
-            impl<T, $($upper: AsMut<T>),*> AsMut<T> for Or<$($upper,)*> {
+            impl<T, $($t: AsMut<T>),*> AsMut<T> for Or<$($t,)*> {
                 #[inline]
                 fn as_mut(&mut self) -> &mut T {
                     match self {
-                        $(Self::$upper(item) => item.as_mut(),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => item.as_mut(),)*
                     }
                 }
             }
 
-            impl<$($upper: IntoIterator),*> IntoIterator for Or<$($upper,)*> {
-                type IntoIter = Iterator<$($upper::IntoIter,)*>;
-                type Item = Or<$($upper::Item,)*>;
+            impl<$($t: IntoIterator),*> IntoIterator for Or<$($t,)*> {
+                type IntoIter = Iterator<$($t::IntoIter,)*>;
+                type Item = Or<$($t::Item,)*>;
 
                 #[inline]
                 fn into_iter(self) -> Self::IntoIter {
                     match self {
-                        $(Self::$upper(item) => Iterator::$upper(item.into_iter()),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Iterator::$t(item.into_iter()),)*
                     }
                 }
             }
 
-            impl<$($upper: iter::Iterator),*> iter::Iterator for Iterator<$($upper,)*> {
-                type Item = Or<$($upper::Item,)*>;
+            impl<$($t: iter::Iterator),*> iter::Iterator for Iterator<$($t,)*> {
+                type Item = Or<$($t::Item,)*>;
 
                 #[inline]
                 fn next(&mut self) -> Option<Self::Item> {
                     match self {
-                        $(Self::$upper(item) => Some(Or::$upper(item.next()?)),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Some(Or::$t(item.next()?)),)*
                     }
                 }
             }
 
-            impl<$($upper: iter::DoubleEndedIterator),*> iter::DoubleEndedIterator for Iterator<$($upper,)*> {
+            impl<$($t: iter::DoubleEndedIterator),*> iter::DoubleEndedIterator for Iterator<$($t,)*> {
                 #[inline]
                 fn next_back(&mut self) -> Option<Self::Item> {
                     match self {
-                        $(Self::$upper(item) => Some(Or::$upper(item.next_back()?)),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => Some(Or::$t(item.next_back()?)),)*
                     }
                 }
             }
 
-            impl<$($upper: iter::ExactSizeIterator),*> iter::ExactSizeIterator for Iterator<$($upper,)*> {
+            impl<$($t: iter::ExactSizeIterator),*> iter::ExactSizeIterator for Iterator<$($t,)*> {
                 #[inline]
                 fn len(&self) -> usize {
                     match self {
-                        $(Self::$upper(item) => item.len(),)*
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!()
+                        $(Self::$t(item) => item.len(),)*
                     }
                 }
             }
 
-            impl<$($upper: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($upper,)*> { }
+            impl<$($t: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($t,)*> { }
 
-            impl<$($upper,)*> Count for ($($upper,)*) {
+            impl<$($t,)*> Count for ($($t,)*) {
                 const COUNT: usize = $count;
             }
 
-            impl<$($upper,)*> Count for Or<$($upper,)*> {
+            impl<$($t,)*> Count for Or<$($t,)*> {
                 const COUNT: usize = $count;
             }
 
-            impl<$($upper,)*> Is for Or<$($upper,)*> {
+            impl<$($t,)*> Is for Or<$($t,)*> {
                 #[inline]
                 fn is(&self, index: usize) -> bool {
                     match (index, self) {
-                        $(($index, Self::$upper(_)) => true,)*
-                        #[allow(unreachable_patterns)]
+                        $(($index, Self::$t(_)) => true,)*
                         _ => false,
                     }
                 }
             }
 
-            or!(@outer $($upper, $index, $lower),* @ ($($upper),*));
+            or!(@outer [$($index, $t, $get, $is, $map),*] []);
         }
     };
-    (@outer $($upper: ident, $index: tt, $lower: ident),* @ $uppers: tt) => {
-        $(or!(@inner $index, $upper, $lower $uppers);)*
+    (@outer [] $old: tt) => {};
+    (@outer
+        [$index: tt, $t: ident, $get: ident, $is: ident, $map: ident $(, $new_index: tt, $new_t: ident, $new_get: ident, $new_is: ident, $new_map: ident)*]
+        [$($old_t: ident),*]
+    ) => {
+        or!(@inner $index, $t, $get, $is, $map [$($old_t, $old_t, same,)* $t, U, with $(, $new_t, $new_t, same)*]);
+        or!(@outer [$($new_index, $new_t, $new_get, $new_is, $new_map),*] [$($old_t,)* $t]);
     };
-    (@inner $index: tt, $upper: ident, $lower: ident ($($uppers: ident),*)) => {
-        impl<$($uppers),*> Or<$($uppers,)*> {
+    (@inner $index: tt, $t: ident, $get: ident, $is: ident, $map: ident [$($ts: ident, $map_t: ident, $map_f: ident),*]) => {
+        impl<$($ts),*> Or<$($ts,)*> {
             #[inline]
-            pub fn $lower(self) -> Option<$upper> {
-                #[allow(irrefutable_let_patterns)]
-                if let Self::$upper(item) = self {
-                    Some(item)
-                } else {
-                    None
+            pub fn $get(self) -> Option<$t> {
+                match self {
+                    Self::$t(item) => Some(item),
+                    #[allow(unreachable_patterns)]
+                    _ => None
+                }
+            }
+
+            #[inline]
+            pub fn $is(&self) -> bool {
+                match self {
+                    Self::$t(_) => true,
+                    #[allow(unreachable_patterns)]
+                    _ => false
+                }
+            }
+
+            #[inline]
+            pub fn $map<U, F: FnOnce($t) -> U>(self, map: F) -> Or<$($map_t,)*> {
+                match self {
+                    $(Self::$ts(item) => Or::$ts($map_f(item, map)),)*
                 }
             }
         }
 
-        impl<$($uppers),*> At<$index> for ($($uppers,)*) {
-            type Item = $upper;
+        impl<$($ts),*> At<$index> for ($($ts,)*) {
+            type Item = $t;
             #[inline]
             fn at(self) -> Self::Item {
                 self.$index
             }
         }
 
-        impl<'a, $($uppers),*> At<$index> for &'a ($($uppers,)*) {
-            type Item = &'a $upper;
+        impl<'a, $($ts),*> At<$index> for &'a ($($ts,)*) {
+            type Item = &'a $t;
             #[inline]
             fn at(self) -> Self::Item {
                 &self.$index
             }
         }
 
-        impl<'a, $($uppers),*> At<$index> for &'a mut ($($uppers,)*) {
-            type Item = &'a mut $upper;
+        impl<'a, $($ts),*> At<$index> for &'a mut ($($ts,)*) {
+            type Item = &'a mut $t;
             #[inline]
             fn at(self) -> Self::Item {
                 &mut self.$index
             }
         }
 
-        impl<$($uppers),*> At<$index> for Or<$($uppers,)*> {
-            type Item = Option<$upper>;
+        impl<$($ts),*> At<$index> for Or<$($ts,)*> {
+            type Item = Option<$t>;
             #[inline]
             fn at(self) -> Self::Item {
                 match self {
-                    Self::$upper($lower) => Some($lower),
+                    Self::$t(item) => Some(item),
                     #[allow(unreachable_patterns)]
                     _ => None,
                 }
             }
         }
 
-        impl<'a, $($uppers),*> At<$index> for &'a Or<$($uppers,)*> {
-            type Item = Option<&'a $upper>;
+        impl<'a, $($ts),*> At<$index> for &'a Or<$($ts,)*> {
+            type Item = Option<&'a $t>;
             #[inline]
             fn at(self) -> Self::Item {
                 match self {
-                    Or::$upper($lower) => Some($lower),
+                    Or::$t(item) => Some(item),
                     #[allow(unreachable_patterns)]
                     _ => None,
                 }
             }
         }
 
-        impl<'a, $($uppers),*> At<$index> for &'a mut Or<$($uppers,)*> {
-            type Item = Option<&'a mut $upper>;
+        impl<'a, $($ts),*> At<$index> for &'a mut Or<$($ts,)*> {
+            type Item = Option<&'a mut $t>;
             #[inline]
             fn at(self) -> Self::Item {
                 match self {
-                    Or::$upper($lower) => Some($lower),
+                    Or::$t(item) => Some(item),
                     #[allow(unreachable_patterns)]
                     _ => None,
                 }
@@ -251,150 +361,41 @@ macro_rules! or {
     };
 }
 
-or!(0, Or0, or0);
-or!(1, Or1, or1, 0, T0, t0);
-or!(2, Or2, or2, 0, T0, t0, 1, T1, t1);
-or!(3, Or3, or3, 0, T0, t0, 1, T1, t1, 2, T2, t2);
-or!(4, Or4, or4, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3);
 or!(
-    5, Or5, or5, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4
-);
-or!(
-    6, Or6, or6, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5
-);
-or!(
-    7, Or7, or7, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6
-);
-or!(
-    8, Or8, or8, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7
-);
-or!(
-    9, Or9, or9, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8
-);
-or!(
-    10, Or10, or10, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9
-);
-or!(
-    11, Or11, or11, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10
-);
-or!(
-    12, Or12, or12, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11
-);
-or!(
-    13, Or13, or13, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12
-);
-or!(
-    14, Or14, or14, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13
-);
-or!(
-    15, Or15, or15, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14
-);
-or!(
-    16, Or16, or16, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15
-);
-or!(
-    17, Or17, or17, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16
-);
-or!(
-    18, Or18, or18, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17
-);
-or!(
-    19, Or19, or19, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18
-);
-or!(
-    20, Or20, or20, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19
-);
-or!(
-    21, Or21, or21, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20
-);
-or!(
-    22, Or22, or22, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21
-);
-or!(
-    23, Or23, or23, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22
-);
-or!(
-    24, Or24, or24, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23
-);
-or!(
-    25, Or25, or25, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24
-);
-or!(
-    26, Or26, or26, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25
-);
-or!(
-    27, Or27, or27, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25, 26, T26, t26
-);
-or!(
-    28, Or28, or28, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25, 26, T26, t26, 27, T27, t27
-);
-or!(
-    29, Or29, or29, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25, 26, T26, t26, 27, T27, t27,
-    28, T28, t28
-);
-or!(
-    30, Or30, or30, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25, 26, T26, t26, 27, T27, t27,
-    28, T28, t28, 29, T29, t29
-);
-or!(
-    31, Or31, or31, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25, 26, T26, t26, 27, T27, t27,
-    28, T28, t28, 29, T29, t29, 30, T30, t30
-);
-or!(
-    32, Or32, or32, 0, T0, t0, 1, T1, t1, 2, T2, t2, 3, T3, t3, 4, T4, t4, 5, T5, t5, 6, T6, t6, 7,
-    T7, t7, 8, T8, t8, 9, T9, t9, 10, T10, t10, 11, T11, t11, 12, T12, t12, 13, T13, t13, 14, T14,
-    t14, 15, T15, t15, 16, T16, t16, 17, T17, t17, 18, T18, t18, 19, T19, t19, 20, T20, t20, 21,
-    T21, t21, 22, T22, t22, 23, T23, t23, 24, T24, t24, 25, T25, t25, 26, T26, t26, 27, T27, t27,
-    28, T28, t28, 29, T29, t29, 30, T30, t30, 31, T31, t31
+    [
+        1, Or1, or1,
+        2, Or2, or2,
+        3, Or3, or3,
+        4, Or4, or4,
+        5, Or5, or5,
+        6, Or6, or6,
+        7, Or7, or7,
+        8, Or8, or8,
+        9, Or9, or9,
+        10, Or10, or10,
+        11, Or11, or11,
+        12, Or12, or12,
+        13, Or13, or13,
+        14, Or14, or14,
+        15, Or15, or15,
+        16, Or16, or16,
+    ]
+    [
+        0, T0, U0, F0, t0, is_t0, map_t0,
+        1, T1, U1, F1, t1, is_t1, map_t1,
+        2, T2, U2, F2, t2, is_t2, map_t2,
+        3, T3, U3, F3, t3, is_t3, map_t3,
+        4, T4, U4, F4, t4, is_t4, map_t4,
+        5, T5, U5, F5, t5, is_t5, map_t5,
+        6, T6, U6, F6, t6, is_t6, map_t6,
+        7, T7, U7, F7, t7, is_t7, map_t7,
+        8, T8, U8, F8, t8, is_t8, map_t8,
+        9, T9, U9, F9, t9, is_t9, map_t9,
+        10, T10, U10, F10, t10, is_t10, map_t10,
+        11, T11, U11, F11, t11, is_t11, map_t11,
+        12, T12, U12, F12, t12, is_t12, map_t12,
+        13, T13, U13, F13, t13, is_t13, map_t13,
+        14, T14, U14, F14, t14, is_t14, map_t14,
+        15, T15, U15, F15, t15, is_t15, map_t15,
+    ]
 );
