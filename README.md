@@ -1,4 +1,4 @@
-<div align="center"> <h1> orn 0.6.0 </h1> </div>
+<div align="center"> <h1> orn 0.6.1 </h1> </div>
 
 <p align="center">
     <em> 
