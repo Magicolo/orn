@@ -8,7 +8,7 @@ description = "A general implementation of the sum type. Meant to be a generic c
 repository = "https://github.com/Magicolo/orn"
 keywords = ["sum-type", "either", "ADT", "data-structures", "no-std"]
 categories = ["data-structures", "no-std"]
-rust-version = "1.60"
+rust-version = "1.61"
 license = "MIT"
 
 [badges]
@@ -19,4 +19,4 @@ default = []
 serde = ["dep:serde"]
 
 [dependencies]
-serde = { version = "1.0.210", optional = true, features = ["derive"] }
+serde = { version = "1.0.214", optional = true, features = ["derive"] }
