@@ -1,8 +1,7 @@
 #![no_std]
-use core::{
-    iter,
-    ops::{Deref, DerefMut},
-};
+#![forbid(unsafe_code)]
+
+use core::ops::{Deref, DerefMut};
 
 pub trait At<const I: usize> {
     type Item;
@@ -74,8 +73,6 @@ macro_rules! or {
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Or<$($t,)*> { $($t($t)),* }
-            #[derive(Clone, Copy, Debug)]
-            pub enum Iterator<$($t,)*> { $($t($t)),* }
 
             impl<$($t,)*> Or<$($t,)*> {
                 #[inline]
@@ -113,16 +110,6 @@ macro_rules! or {
                         $(Self::$t(item) => Or::$t(item.deref_mut()),)*
 
                     }
-                }
-
-                #[inline]
-                pub fn iter(&self) -> Iterator<$(<&$t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a $t: IntoIterator,)* {
-                    self.as_ref().into_iter()
-                }
-
-                #[inline]
-                pub fn iter_mut(&mut self) -> Iterator<$(<&mut $t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a mut $t: IntoIterator,)* {
-                    self.as_mut().into_iter()
                 }
             }
 
@@ -199,58 +186,6 @@ macro_rules! or {
                 }
             }
 
-            impl<$($t: IntoIterator),*> IntoIterator for Or<$($t,)*> {
-                type IntoIter = Iterator<$($t::IntoIter,)*>;
-                type Item = Or<$($t::Item,)*>;
-
-                #[inline]
-                fn into_iter(self) -> Self::IntoIter {
-                    match self {
-                        $(Self::$t(item) => Iterator::$t(item.into_iter()),)*
-                    }
-                }
-            }
-
-            impl<$($t: iter::Iterator),*> iter::Iterator for Iterator<$($t,)*> {
-                type Item = Or<$($t::Item,)*>;
-
-                #[inline]
-                fn next(&mut self) -> Option<Self::Item> {
-                    match self {
-                        $(Self::$t(item) => Some(Or::$t(item.next()?)),)*
-                    }
-                }
-            }
-
-            impl<$($t: iter::DoubleEndedIterator),*> iter::DoubleEndedIterator for Iterator<$($t,)*> {
-                #[inline]
-                fn next_back(&mut self) -> Option<Self::Item> {
-                    match self {
-                        $(Self::$t(item) => Some(Or::$t(item.next_back()?)),)*
-                    }
-                }
-            }
-
-            impl<$($t: iter::ExactSizeIterator),*> iter::ExactSizeIterator for Iterator<$($t,)*> {
-                #[inline]
-                fn len(&self) -> usize {
-                    match self {
-                        $(Self::$t(item) => item.len(),)*
-                    }
-                }
-            }
-
-            impl<$($t: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($t,)*> { }
-
-            impl<T, $($t: Extend<T>,)*> Extend<T> for Or<$($t,)*> {
-                #[inline]
-                fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-                    match self {
-                        $(Self::$t(item) => item.extend(iter),)*
-                    }
-                }
-            }
-
             impl<$($t,)*> Count for ($($t,)*) {
                 const COUNT: usize = $count;
             }
@@ -265,6 +200,79 @@ macro_rules! or {
                     match (index, self) {
                         $(($index, Self::$t(_)) => true,)*
                         _ => false,
+                    }
+                }
+            }
+
+            #[cfg(feature = "iter")]
+            pub mod iter {
+                use super::Or;
+                use core::{self, iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator}};
+
+                #[derive(Clone, Copy, Debug)]
+                pub enum Iterator<$($t,)*> { $($t($t)),* }
+
+                impl<$($t,)*> Or<$($t,)*> {
+                    #[inline]
+                    pub fn iter(&self) -> Iterator<$(<&$t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a $t: IntoIterator,)* {
+                        self.as_ref().into_iter()
+                    }
+
+                    #[inline]
+                    pub fn iter_mut(&mut self) -> Iterator<$(<&mut $t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a mut $t: IntoIterator,)* {
+                        self.as_mut().into_iter()
+                    }
+                }
+
+                impl<$($t: IntoIterator),*> IntoIterator for Or<$($t,)*> {
+                    type IntoIter = Iterator<$($t::IntoIter,)*>;
+                    type Item = Or<$($t::Item,)*>;
+
+                    #[inline]
+                    fn into_iter(self) -> Self::IntoIter {
+                        match self {
+                            $(Self::$t(item) => Iterator::$t(item.into_iter()),)*
+                        }
+                    }
+                }
+
+                impl<$($t: core::iter::Iterator),*> core::iter::Iterator for Iterator<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+
+                    #[inline]
+                    fn next(&mut self) -> Option<Self::Item> {
+                        match self {
+                            $(Self::$t(item) => Some(Or::$t(item.next()?)),)*
+                        }
+                    }
+                }
+
+                impl<$($t: DoubleEndedIterator),*> DoubleEndedIterator for Iterator<$($t,)*> {
+                    #[inline]
+                    fn next_back(&mut self) -> Option<Self::Item> {
+                        match self {
+                            $(Self::$t(item) => Some(Or::$t(item.next_back()?)),)*
+                        }
+                    }
+                }
+
+                impl<$($t: ExactSizeIterator),*> ExactSizeIterator for Iterator<$($t,)*> {
+                    #[inline]
+                    fn len(&self) -> usize {
+                        match self {
+                            $(Self::$t(item) => item.len(),)*
+                        }
+                    }
+                }
+
+                impl<$($t: FusedIterator),*> FusedIterator for Iterator<$($t,)*> { }
+
+                impl<T, $($t: Extend<T>,)*> Extend<T> for Or<$($t,)*> {
+                    #[inline]
+                    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+                        match self {
+                            $(Self::$t(item) => item.extend(iter),)*
+                        }
                     }
                 }
             }

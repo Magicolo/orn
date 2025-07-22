@@ -1,3 +1,5 @@
+#![cfg(feature = "iter")]
+
 use orn::Or2;
 
 #[test]

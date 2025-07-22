@@ -15,7 +15,8 @@ license = "MIT"
 github = { repository = "Magicolo/orn", workflow = "test" }
 
 [features]
-default = []
+default = ["iter"]
+iter = []
 serde = ["dep:serde"]
 rayon = ["dep:rayon"]
 

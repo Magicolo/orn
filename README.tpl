@@ -14,10 +14,11 @@
 
 ---
 ### Features
+- has `#![no_std]` and `#![forbid(unsafe_code)]`
 - supports the applicable core traits
-- supports the `Iterator` traits 
-- serde: supports the `Serialize` and `Deserialize` traits
-- rayon: supports the `ParallelIterator` traits
+- `features = ["iter"]` *(default)*: supports the `Iterator` family of traits 
+- `features = ["serde"]`: supports the `Serialize` and `Deserialize` traits
+- `features = ["rayon"]`: supports the `ParallelIterator` family of traits
 
 ---
 ### Cheat Sheet
