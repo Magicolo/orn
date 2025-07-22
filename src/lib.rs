@@ -242,6 +242,15 @@ macro_rules! or {
 
             impl<$($t: iter::FusedIterator),*> iter::FusedIterator for Iterator<$($t,)*> { }
 
+            impl<T, $($t: Extend<T>,)*> Extend<T> for Or<$($t,)*> {
+                #[inline]
+                fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+                    match self {
+                        $(Self::$t(item) => item.extend(iter),)*
+                    }
+                }
+            }
+
             impl<$($t,)*> Count for ($($t,)*) {
                 const COUNT: usize = $count;
             }
@@ -258,6 +267,148 @@ macro_rules! or {
                         _ => false,
                     }
                 }
+            }
+
+            #[cfg(feature = "rayon")]
+            pub mod rayon {
+                use super::Or;
+                use ::rayon::iter::{
+                    IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator,
+                    ParallelDrainFull, ParallelDrainRange, ParallelExtend, ParallelIterator,
+                    IndexedParallelIterator,
+                    plumbing::{UnindexedConsumer, Producer, ProducerCallback, Folder, Consumer},
+                };
+                use core::{iter::Map, ops::RangeBounds, marker::PhantomData};
+
+                #[derive(Clone, Copy, Debug)]
+                pub enum Iterator<$($t,)*> { $($t($t)),* }
+                pub struct One<T, $($t: ?Sized,)* const N: usize>(pub T, $(PhantomData<$t>,)*);
+
+                impl<T, $($t: ?Sized,)* const N: usize> One<T, $($t,)* N> {
+                    #[inline]
+                    pub const fn new(value: T) -> Self {
+                        Self(value, $(PhantomData::<$t>,)*)
+                    }
+                }
+
+                impl<$($t: IntoParallelIterator,)*> IntoParallelIterator for Or<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+                    type Iter = Iterator<$($t::Iter,)*>;
+
+                    #[inline]
+                    fn into_par_iter(self) -> Self::Iter {
+                        match self {
+                            $(Self::$t(item) => Iterator::$t(item.into_par_iter()),)*
+                        }
+                    }
+                }
+
+                impl<'data, $($t: IntoParallelRefIterator<'data>,)*> IntoParallelRefIterator<'data> for Or<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+                    type Iter = Iterator<$($t::Iter,)*>;
+
+                    #[inline]
+                    fn par_iter(&'data self) -> Self::Iter {
+                        match self {
+                            $(Self::$t(item) => Iterator::$t(item.par_iter()),)*
+                        }
+                    }
+                }
+
+                impl<'data, $($t: IntoParallelRefMutIterator<'data>,)*> IntoParallelRefMutIterator<'data> for Or<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+                    type Iter = Iterator<$($t::Iter,)*>;
+
+                    #[inline]
+                    fn par_iter_mut(&'data mut self) -> Self::Iter {
+                        match self {
+                            $(Self::$t(item) => Iterator::$t(item.par_iter_mut()),)*
+                        }
+                    }
+                }
+
+                impl<$($t: ParallelIterator,)*> ParallelIterator for Iterator<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+
+                    #[inline]
+                    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+                    where
+                        C: UnindexedConsumer<Self::Item>,
+                    {
+                        match self {
+                            $(Self::$t(item) => item.map(Or::$t).drive_unindexed(consumer),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn opt_len(&self) -> Option<usize> {
+                        match self {
+                            $(Self::$t(item) => item.opt_len(),)*
+                        }
+                    }
+                }
+
+                impl<$($t: ParallelDrainFull,)*> ParallelDrainFull for Or<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+                    type Iter = Iterator<$($t::Iter,)*>;
+
+                    #[inline]
+                    fn par_drain(self) -> Self::Iter {
+                        match self {
+                            $(Self::$t(value) => Iterator::$t(value.par_drain()),)*
+                        }
+                    }
+                }
+
+                impl<$($t: ParallelDrainRange,)*> ParallelDrainRange for Or<$($t,)*> {
+                    type Item = Or<$($t::Item,)*>;
+                    type Iter = Iterator<$($t::Iter,)*>;
+
+                    #[inline]
+                    fn par_drain<R: RangeBounds<usize>>(self, range: R) -> Self::Iter {
+                        match self {
+                            $(Self::$t(value) => Iterator::$t(value.par_drain(range)),)*
+                        }
+                    }
+                }
+
+                impl<T: Send, $($t: ParallelExtend<T>,)*> ParallelExtend<T> for Or<$($t,)*> {
+                    #[inline]
+                    fn par_extend<I>(&mut self, par_iter: I)
+                    where
+                        I: IntoParallelIterator<Item = T>,
+                    {
+                        match self {
+                            $(Self::$t(value) => value.par_extend(par_iter),)*
+                        }
+                    }
+                }
+
+
+                impl<$($t: IndexedParallelIterator,)*> IndexedParallelIterator for Iterator<$($t,)*> {
+                    #[inline]
+                    fn drive<C: Consumer<Self::Item>>(self, consumer: C) -> C::Result {
+                        match self {
+                            $(Self::$t(item) => item.map(Or::$t).drive(consumer),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn len(&self) -> usize {
+                        match self {
+                            $(Self::$t(item) => item.len(),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn with_producer<CB: ProducerCallback<Self::Item>>(self, callback: CB) -> CB::Output {
+                        match self {
+                            $(Self::$t(item) => item.with_producer(One::new(callback)),)*
+                        }
+                    }
+                }
+
+                or!(@rayon @outer [$($t),*] [$($index, $t),*]);
             }
 
             or!(@outer [$($index, $t, $get, $is, $map),*] []);
@@ -356,6 +507,79 @@ macro_rules! or {
                     #[allow(unreachable_patterns)]
                     _ => None,
                 }
+            }
+        }
+    };
+    (@rayon @outer $types: tt [$($index: tt, $type: ident),*]) => {
+        $(or!(@rayon @inner $index, $type $types);)*
+    };
+    (@rayon @inner $index: tt, $type: ident [$($t: ident),*]) => {
+        impl<$($t: Send,)* C: ProducerCallback<Or<$($t,)*>>> ProducerCallback<$type> for One<C, $($t,)* $index> {
+            type Output = C::Output;
+
+            #[inline]
+            fn callback<P>(self, producer: P) -> Self::Output
+            where
+                P: Producer<Item = $type>,
+            {
+                self.0.callback(One::<_, $($t,)* $index>::new(producer))
+            }
+        }
+
+        impl<$($t: Send,)* P: Producer<Item = $type>> Producer for One<P, $($t,)* $index> {
+            type IntoIter = Map<P::IntoIter, fn($type) -> Self::Item>;
+            type Item = Or<$($t,)*>;
+
+            #[inline]
+            fn fold_with<F>(self, folder: F) -> F
+            where
+                F: Folder<Self::Item>,
+            {
+                self.0.fold_with(One::new(folder)).0
+            }
+
+            #[inline]
+            fn into_iter(self) -> Self::IntoIter {
+                self.0.into_iter().map(Or::$type)
+            }
+
+            #[inline]
+            fn max_len(&self) -> usize {
+                self.0.max_len()
+            }
+
+            #[inline]
+            fn min_len(&self) -> usize {
+                self.0.min_len()
+            }
+
+            #[inline]
+            fn split_at(self, index: usize) -> (Self, Self) {
+                let (left, right) = self.0.split_at(index);
+                (Self::new(left), Self::new(right))
+            }
+        }
+
+        impl<$($t,)* F: Folder<Or<$($t,)*>>> Folder<$type> for One<F, $($t,)* $index> {
+            type Result = F::Result;
+
+            fn complete(self) -> Self::Result {
+                self.0.complete()
+            }
+
+            fn consume(self, item: $type) -> Self {
+                Self::new(self.0.consume(Or::$type(item)))
+            }
+
+            fn consume_iter<I>(self, iter: I) -> Self
+            where
+                I: IntoIterator<Item = $type>,
+            {
+                Self::new(self.0.consume_iter(iter.into_iter().map(Or::$type)))
+            }
+
+            fn full(&self) -> bool {
+                self.0.full()
             }
         }
     };
