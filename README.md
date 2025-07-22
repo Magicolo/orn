@@ -50,4 +50,5 @@ pub fn retrieve_statically(input: Or4<char, bool, isize, u32>) {
 }
 
 fn main() {}
+
 ```
