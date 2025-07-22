@@ -13,6 +13,13 @@ A general implementation of the sum type. Meant to be a generic counterpart to t
 </div>
 
 ---
+### Features
+- supports the applicable core traits
+- supports the `Iterator` traits 
+- serde: supports the `Serialize` and `Deserialize` traits
+- rayon: supports the `ParallelIterator` traits
+
+---
 ### Cheat Sheet
 
 ```rust

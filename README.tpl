@@ -13,6 +13,13 @@
 </div>
 
 ---
+### Features
+- supports the applicable core traits
+- supports the `Iterator` traits 
+- serde: supports the `Serialize` and `Deserialize` traits
+- rayon: supports the `ParallelIterator` traits
+
+---
 ### Cheat Sheet
 
 ```rust
