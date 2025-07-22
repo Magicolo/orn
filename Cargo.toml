@@ -1,6 +1,6 @@
 [package]
 name = "orn"
-version = "0.6.1"
+version = "0.7.0"
 edition = "2021"
 authors = ["Magicolo <magicololand@gmail.com>"]
 documentation = "https://docs.rs/orn/latest/orn/"
@@ -8,7 +8,7 @@ description = "A general implementation of the sum type. Meant to be a generic c
 repository = "https://github.com/Magicolo/orn"
 keywords = ["sum-type", "either", "ADT", "data-structures", "no-std"]
 categories = ["data-structures", "no-std"]
-rust-version = "1.61"
+rust-version = "1.63"
 license = "MIT"
 
 [badges]
