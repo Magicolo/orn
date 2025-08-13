@@ -17,7 +17,7 @@
 - has `#![no_std]` and `#![forbid(unsafe_code)]`
 - supports the applicable core traits
 - `features = ["iter"]` *(default)*: supports the `Into/Iterator` traits 
-- `features = ["future"]`: supports the `Into/Future` traits 
+- `features = ["future"]` *(default)*: supports the `Into/Future` traits 
 - `features = ["serde"]`: supports the `Serialize` and `Deserialize` traits
 - `features = ["rayon"]`: supports the `ParallelIterator` family of traits
 - `features = ["or16"]`: for up to `Or16`

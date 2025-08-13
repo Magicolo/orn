@@ -14,7 +14,7 @@ license = "MIT"
 github = { repository = "Magicolo/orn", workflow = "test" }
 
 [features]
-default = ["iter"]
+default = ["iter", "future"]
 or16 = []
 or32 = ["or16"]
 iter = []
