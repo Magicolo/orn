@@ -12,7 +12,7 @@ jobs:
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: |
         cargo hack build --release --all-targets --verbose --feature-powerset
         cargo hack build --release --all-targets --verbose --feature-powerset --rust-version
@@ -21,33 +21,33 @@ jobs:
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: cargo hack clippy --release --all-targets --verbose --feature-powerset -- --deny warnings
   doc:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: cargo hack doc --release --verbose --feature-powerset
   semver:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: cargo semver-checks --verbose
   msrv:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: cargo msrv verify
   audit:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: cargo audit
