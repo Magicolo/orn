@@ -317,7 +317,6 @@ macro_rules! or {
             }
 
             #[cfg(feature = "rayon")]
-            #[rustversion::since(1.80.0)]
             pub mod rayon {
                 use super::Or;
                 use ::rayon::iter::{
@@ -611,14 +610,17 @@ macro_rules! or {
         impl<$($t,)* F: Folder<Or<$($t,)*>>> Folder<$type> for One<F, $($t,)* $index> {
             type Result = F::Result;
 
+            #[inline]
             fn complete(self) -> Self::Result {
                 self.0.complete()
             }
 
+            #[inline]
             fn consume(self, item: $type) -> Self {
                 Self::new(self.0.consume(Or::$type(item)))
             }
 
+            #[inline]
             fn consume_iter<I>(self, iter: I) -> Self
             where
                 I: IntoIterator<Item = $type>,
@@ -626,6 +628,7 @@ macro_rules! or {
                 Self::new(self.0.consume_iter(iter.into_iter().map(Or::$type)))
             }
 
+            #[inline]
             fn full(&self) -> bool {
                 self.0.full()
             }
@@ -633,7 +636,7 @@ macro_rules! or {
     };
 }
 
-#[cfg(all(feature = "or8", not(feature = "or16"), not(feature = "or32")))]
+#[cfg(all(not(feature = "or16"), not(feature = "or32")))]
 or!(
     [
         1, Or1, or1,
