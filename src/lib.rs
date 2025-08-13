@@ -277,6 +277,45 @@ macro_rules! or {
                 }
             }
 
+            #[cfg(feature = "future")]
+            pub mod future {
+                use super::Or;
+                use core::{
+                    future::{self, IntoFuture},
+                    pin::Pin,
+                    task::{Context, Poll},
+                };
+                use pin_project::pin_project;
+
+                #[pin_project(project = Project)]
+                pub enum Future<$($t,)*> {
+                    $($t(#[pin] $t),)*
+                }
+
+                impl<$($t: IntoFuture),*> IntoFuture for Or<$($t,)*> {
+                    type IntoFuture = Future<$($t::IntoFuture,)*>;
+                    type Output = Or<$($t::Output,)*>;
+
+                    #[inline]
+                    fn into_future(self) -> Self::IntoFuture {
+                        match self {
+                            $(Self::$t(item) => Future::$t(item.into_future()),)*
+                        }
+                    }
+                }
+
+                impl<$($t: future::Future),*> future::Future for Future<$($t,)*> {
+                    type Output = Or<$($t::Output,)*>;
+
+                    #[inline]
+                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                        match self.project() {
+                            $(Project::$t(item) => item.poll(cx).map(Or::$t),)*
+                        }
+                    }
+                }
+            }
+
             #[cfg(feature = "rayon")]
             pub mod rayon {
                 use super::Or;
