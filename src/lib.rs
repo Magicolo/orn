@@ -317,6 +317,7 @@ macro_rules! or {
             }
 
             #[cfg(feature = "rayon")]
+            #[rustversion::since(1.80.0)]
             pub mod rayon {
                 use super::Or;
                 use ::rayon::iter::{
