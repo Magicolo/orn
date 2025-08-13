@@ -633,6 +633,31 @@ macro_rules! or {
     };
 }
 
+#[cfg(all(feature = "or8", not(feature = "or16"), not(feature = "or32")))]
+or!(
+    [
+        1, Or1, or1,
+        2, Or2, or2,
+        3, Or3, or3,
+        4, Or4, or4,
+        5, Or5, or5,
+        6, Or6, or6,
+        7, Or7, or7,
+        8, Or8, or8,
+    ]
+    [
+        0, T0, U0, F0, t0, is_t0, map_t0,
+        1, T1, U1, F1, t1, is_t1, map_t1,
+        2, T2, U2, F2, t2, is_t2, map_t2,
+        3, T3, U3, F3, t3, is_t3, map_t3,
+        4, T4, U4, F4, t4, is_t4, map_t4,
+        5, T5, U5, F5, t5, is_t5, map_t5,
+        6, T6, U6, F6, t6, is_t6, map_t6,
+        7, T7, U7, F7, t7, is_t7, map_t7,
+    ]
+);
+
+#[cfg(all(feature = "or16", not(feature = "or32")))]
 or!(
     [
         1, Or1, or1,
@@ -669,5 +694,77 @@ or!(
         13, T13, U13, F13, t13, is_t13, map_t13,
         14, T14, U14, F14, t14, is_t14, map_t14,
         15, T15, U15, F15, t15, is_t15, map_t15,
+    ]
+);
+
+#[cfg(feature = "or32")]
+or!(
+    [
+        1, Or1, or1,
+        2, Or2, or2,
+        3, Or3, or3,
+        4, Or4, or4,
+        5, Or5, or5,
+        6, Or6, or6,
+        7, Or7, or7,
+        8, Or8, or8,
+        9, Or9, or9,
+        10, Or10, or10,
+        11, Or11, or11,
+        12, Or12, or12,
+        13, Or13, or13,
+        14, Or14, or14,
+        15, Or15, or15,
+        16, Or16, or16,
+        17, Or17, or17,
+        18, Or18, or18,
+        19, Or19, or19,
+        20, Or20, or20,
+        21, Or21, or21,
+        22, Or22, or22,
+        23, Or23, or23,
+        24, Or24, or24,
+        25, Or25, or25,
+        26, Or26, or26,
+        27, Or27, or27,
+        28, Or28, or28,
+        29, Or29, or29,
+        30, Or30, or30,
+        31, Or31, or31,
+        32, Or32, or32,
+    ]
+    [
+        0, T0, U0, F0, t0, is_t0, map_t0,
+        1, T1, U1, F1, t1, is_t1, map_t1,
+        2, T2, U2, F2, t2, is_t2, map_t2,
+        3, T3, U3, F3, t3, is_t3, map_t3,
+        4, T4, U4, F4, t4, is_t4, map_t4,
+        5, T5, U5, F5, t5, is_t5, map_t5,
+        6, T6, U6, F6, t6, is_t6, map_t6,
+        7, T7, U7, F7, t7, is_t7, map_t7,
+        8, T8, U8, F8, t8, is_t8, map_t8,
+        9, T9, U9, F9, t9, is_t9, map_t9,
+        10, T10, U10, F10, t10, is_t10, map_t10,
+        11, T11, U11, F11, t11, is_t11, map_t11,
+        12, T12, U12, F12, t12, is_t12, map_t12,
+        13, T13, U13, F13, t13, is_t13, map_t13,
+        14, T14, U14, F14, t14, is_t14, map_t14,
+        15, T15, U15, F15, t15, is_t15, map_t15,
+        16, T16, U16, F16, t16, is_t16, map_t16,
+        17, T17, U17, F17, t17, is_t17, map_t17,
+        18, T18, U18, F18, t18, is_t18, map_t18,
+        19, T19, U19, F19, t19, is_t19, map_t19,
+        20, T20, U20, F20, t20, is_t20, map_t20,
+        21, T21, U21, F21, t21, is_t21, map_t21,
+        22, T22, U22, F22, t22, is_t22, map_t22,
+        23, T23, U23, F23, t23, is_t23, map_t23,
+        24, T24, U24, F24, t24, is_t24, map_t24,
+        25, T25, U25, F25, t25, is_t25, map_t25,
+        26, T26, U26, F26, t26, is_t26, map_t26,
+        27, T27, U27, F27, t27, is_t27, map_t27,
+        28, T28, U28, F28, t28, is_t28, map_t28,
+        29, T29, U29, F29, t29, is_t29, map_t29,
+        30, T30, U30, F30, t30, is_t30, map_t30,
+        31, T31, U31, F31, t31, is_t31, map_t31,
     ]
 );

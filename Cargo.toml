@@ -14,7 +14,10 @@ license = "MIT"
 github = { repository = "Magicolo/orn", workflow = "test" }
 
 [features]
-default = ["iter", "future"]
+default = ["or8", "iter", "future"]
+or8 = []
+or16 = []
+or32 = []
 iter = []
 future = ["dep:pin-project"]
 serde = ["dep:serde"]
