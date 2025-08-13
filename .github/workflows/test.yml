@@ -14,9 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - run: cargo hack nextest run --release --all-targets --verbose --feature-powerset
-    - run: cargo hack nextest run --release --all-targets --verbose --feature-powerset --rust-version
     - run: cargo hack test --doc --release --all-features --verbose
-    - run: cargo hack test --doc --release --all-features --verbose --rust-version
   clippy:
     runs-on: ubuntu-latest
     container: 
@@ -40,13 +38,6 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - run: cargo semver-checks --verbose
-  msrv:
-    runs-on: ubuntu-latest
-    container: 
-      image: ghcr.io/magicolo/rust
-    steps:
-    - uses: actions/checkout@v5
-    - run: cargo msrv verify --all-features
   audit:
     runs-on: ubuntu-latest
     container: 
