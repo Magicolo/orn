@@ -16,9 +16,12 @@ A general implementation of the sum type. Meant to be a generic counterpart to t
 ### Features
 - has `#![no_std]` and `#![forbid(unsafe_code)]`
 - supports the applicable core traits
-- `features = ["iter"]` *(default)*: supports the `Iterator` family of traits 
+- `features = ["iter"]` *(default)*: supports the `Into/Iterator` traits 
+- `features = ["future"]`: supports the `Into/Future` traits 
 - `features = ["serde"]`: supports the `Serialize` and `Deserialize` traits
 - `features = ["rayon"]`: supports the `ParallelIterator` family of traits
+- `features = ["or16"]`: for up to `Or16`
+- `features = ["or32"]`: for up to `Or32`
 
 ---
 ### Cheat Sheet
