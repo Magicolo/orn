@@ -3,7 +3,7 @@
 <p align="center">
     <em> 
 
-A general implementation of the sum type. Meant to be a generic counterpart to tuples.
+A generic implementation of a sum type (or discriminated union). It provides `enum Or<T1, T2, ..., N>` types as a counterpart to tuples.
     </em>
 </p>
 
