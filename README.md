@@ -3,7 +3,7 @@
 <p align="center">
     <em> 
 
-A generic implementation of a sum type (or discriminated union). It provides Or<T1, T2, ...> types that can hold a value of any of their generic type arguments.
+A generic implementation of a sum type (or discriminated union). It provides `enum Or<T1, T2, ..., N>` types as a counterpart to tuples.
     </em>
 </p>
 
@@ -81,4 +81,5 @@ pub fn unify_divergent_parallel_iterators(
 }
 
 fn main() {}
+
 ```

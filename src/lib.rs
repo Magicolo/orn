@@ -1,73 +1,13 @@
-//! A generic implementation of a discriminated union type.
-//!
-//! `Or<T1, T2, ...>` is a type that can hold a value of any of its generic type arguments.
-//! It is an enum with a variant for each type argument: `T0(T1)`, `T1(T2)`, and so on.
-//!
-//! This is useful in a few scenarios:
-//!
-//! - **Unifying types:** When a function needs to return different types of values based on some logic.
-//!   For example, returning different types of iterators.
-//! - **Generic counterparts to tuples:** While tuples are product types (they hold all of their elements at once),
-//!   `Or` is a sum type (it holds only one of its possible elements at a time).
-//!
-//! # Examples
-//!
-//! A function that can return either a `u8` or a `String` packaged in an [`Or2`]:
-//!
-//! ```
-//! use orn::{or2, Or2};
-//!
-//! fn get_value(is_string: bool) -> Or2<u8, String> {
-//!     if is_string {
-//!         or2::Or::T1("hello".to_string())
-//!     } else {
-//!         or2::Or::T0(42)
-//!     }
-//! }
-//!
-//! let value = get_value(true);
-//! match value {
-//!     or2::Or::T0(num) => println!("Got a number: {}", num),
-//!     or2::Or::T1(text) => println!("Got a string: {}", text),
-//! }
-//! ```
-//!
-//! Unifying different iterator types:
-//!
-//! ```
-//! # #[cfg(feature = "iter")]
-//! # {
-//! use orn::{or1, or2, Or1, Or2};
-//! use std::iter::IntoIterator;
-//!
-//! fn get_iter(use_range: bool) -> impl Iterator<Item = u8> {
-//!     let unified_iterator: Or2<_, _> = if use_range {
-//!         or2::Or::T0(0..=5)
-//!     } else {
-//!         or2::Or::T1([1, 2, 3].into_iter())
-//!     };
-//!
-//!     unified_iterator.into_iter().map(|or| or.into_inner())
-//! }
-//!
-//! let collected: Vec<_> = get_iter(true).collect();
-//! assert_eq!(collected, vec![0, 1, 2, 3, 4, 5]);
-//!
-//! let collected: Vec<_> = get_iter(false).collect();
-//! assert_eq!(collected, vec![1, 2, 3]);
-//! # }
-//! ```
 #![no_std]
 #![forbid(unsafe_code)]
+#![doc = include_str!("../README.md")]
 
 use core::ops::{Deref, DerefMut};
 
 /// A trait for accessing a type at a specific index.
 ///
-/// This trait is implemented for [`Or`] types and tuples, allowing generic
-/// access to their elements. For [`Or`] types, it returns an [`Option`] because
-/// the `Or` might not contain a value of the requested type. For tuples, it
-/// returns the value directly.
+/// This trait is implemented for `Or` types and tuples, allowing generic
+/// access to their elements.
 pub trait At<const I: usize> {
     /// The type of the item at the given index.
     type Item;
@@ -75,21 +15,21 @@ pub trait At<const I: usize> {
     fn at(self) -> Self::Item;
 }
 
-/// A trait for checking if an [`Or`] value is of a certain variant by index.
+/// A trait for checking if an `Or` value is of a certain variant by index.
 pub trait Is {
-    /// Returns `true` if the [`Or`] value corresponds to the given variant
+    /// Returns `true` if the `Or` value corresponds to the given variant
     /// index.
     ///
     /// # Examples
     ///
     /// ```
-    /// use orn::{or2::Or, Is, Or2};
+    /// use orn::{Is, Or2};
     ///
-    /// let value: Or2<u8, &str> = Or::T0(42);
+    /// let value: Or2<u8, &str> = Or2::T0(42);
     /// assert!(value.is(0));
     /// assert!(!value.is(1));
     ///
-    /// let value: Or2<u8, &str> = Or::T1("hello");
+    /// let value: Or2<u8, &str> = Or2::T1("hello");
     /// assert!(!value.is(0));
     /// assert!(value.is(1));
     /// ```
@@ -98,12 +38,12 @@ pub trait Is {
 
 /// A trait for getting the number of type arguments in a type.
 ///
-/// This is implemented for [`Or`] types and tuples.
+/// This is implemented for `Or` types and tuples.
 ///
 /// # Examples
 ///
 /// ```
-/// use orn::{or3::Or, Count, Or3};
+/// use orn::{Count, Or3};
 ///
 /// assert_eq!(Or3::<u8, u16, u32>::COUNT, 3);
 /// assert_eq!(<(u8, u16, u32)>::COUNT, 3);
@@ -126,7 +66,6 @@ fn with<T, U, F: FnOnce(T) -> U>(item: T, map: F) -> U {
 /// A type alias for a union of 0 types. This type is uninhabited.
 pub type Or0 = or0::Or;
 
-/// Contains the [`Or`] enum for 0 types.
 pub mod or0 {
     use super::*;
 
@@ -143,15 +82,12 @@ pub mod or0 {
     }
 }
 
-#[doc(hidden)]
 macro_rules! ignore_and_stringify {
     ($to_ignore:tt, $to_stringify:ty) => {
         stringify!($to_stringify)
-    }
+    };
 }
 
-/// A helper macro to generate a comma-separated list of a given type string.
-#[doc(hidden)]
 macro_rules! type_list {
     ($type:ty, $T1:tt $(, $T:tt)*) => {
         concat!(stringify!($type) $(, ", ", ignore_and_stringify!($T, $type))*)
@@ -182,16 +118,13 @@ macro_rules! or {
         );
     };
     (@main $count: tt, $alias: ident, $module: ident [$($index: tt, $same_t: ident, $same_u: ident, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident),*]) => {
-        #[doc = concat!("A type alias for a union of `", stringify!($count), "` types.")]
+        #[doc = concat!("An `enum` of `", stringify!($count), "` variants.")]
         pub type $alias<$($t,)*> = $module::Or<$($t,)*>;
 
-        #[doc = concat!("Contains the [`Or`] enum for `", stringify!($count), "` types.")]
         pub mod $module {
             use super::*;
 
-            #[doc = concat!("A union of `", stringify!($count), "` types.")]
-            ///
-            /// See the [crate-level documentation](crate) for more details.
+            #[doc = concat!("An `enum` of `", stringify!($count), "` variants.")]
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Or<$($t,)*> {
@@ -644,7 +577,6 @@ macro_rules! or {
                 /// A parallel iterator that yields the items of an [`Or`] of parallel iterators.
                 #[derive(Clone, Copy, Debug)]
                 pub enum Iterator<$($t,)*> { $($t($t)),* }
-                #[doc(hidden)]
                 pub struct One<T, $($t: ?Sized,)* const N: usize>(pub T, $(PhantomData<$t>,)*);
 
                 impl<T, $($t: ?Sized,)* const N: usize> One<T, $($t,)* N> {

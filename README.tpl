@@ -27,5 +27,5 @@
 ### Cheat Sheet
 
 ```rust
-{% include "examples/cheat.rs" %}
+{% include "cheat.rs" %}
 ```
