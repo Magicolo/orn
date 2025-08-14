@@ -1,18 +1,115 @@
+//! A generic implementation of a discriminated union type.
+//!
+//! `Or<T1, T2, ...>` is a type that can hold a value of any of its generic type arguments.
+//! It is an enum with a variant for each type argument: `T0(T1)`, `T1(T2)`, and so on.
+//!
+//! This is useful in a few scenarios:
+//!
+//! - **Unifying types:** When a function needs to return different types of values based on some logic.
+//!   For example, returning different types of iterators.
+//! - **Generic counterparts to tuples:** While tuples are product types (they hold all of their elements at once),
+//!   `Or` is a sum type (it holds only one of its possible elements at a time).
+//!
+//! # Examples
+//!
+//! A function that can return either a `u8` or a `String` packaged in an [`Or2`]:
+//!
+//! ```
+//! use orn::{or2, Or2};
+//!
+//! fn get_value(is_string: bool) -> Or2<u8, String> {
+//!     if is_string {
+//!         or2::Or::T1("hello".to_string())
+//!     } else {
+//!         or2::Or::T0(42)
+//!     }
+//! }
+//!
+//! let value = get_value(true);
+//! match value {
+//!     or2::Or::T0(num) => println!("Got a number: {}", num),
+//!     or2::Or::T1(text) => println!("Got a string: {}", text),
+//! }
+//! ```
+//!
+//! Unifying different iterator types:
+//!
+//! ```
+//! # #[cfg(feature = "iter")]
+//! # {
+//! use orn::{or1, or2, Or1, Or2};
+//! use std::iter::IntoIterator;
+//!
+//! fn get_iter(use_range: bool) -> impl Iterator<Item = u8> {
+//!     let unified_iterator: Or2<_, _> = if use_range {
+//!         or2::Or::T0(0..=5)
+//!     } else {
+//!         or2::Or::T1([1, 2, 3].into_iter())
+//!     };
+//!
+//!     unified_iterator.into_iter().map(|or| or.into_inner())
+//! }
+//!
+//! let collected: Vec<_> = get_iter(true).collect();
+//! assert_eq!(collected, vec![0, 1, 2, 3, 4, 5]);
+//!
+//! let collected: Vec<_> = get_iter(false).collect();
+//! assert_eq!(collected, vec![1, 2, 3]);
+//! # }
+//! ```
 #![no_std]
 #![forbid(unsafe_code)]
 
 use core::ops::{Deref, DerefMut};
 
+/// A trait for accessing a type at a specific index.
+///
+/// This trait is implemented for [`Or`] types and tuples, allowing generic
+/// access to their elements. For [`Or`] types, it returns an [`Option`] because
+/// the `Or` might not contain a value of the requested type. For tuples, it
+/// returns the value directly.
 pub trait At<const I: usize> {
+    /// The type of the item at the given index.
     type Item;
+    /// Returns the item at the given index.
     fn at(self) -> Self::Item;
 }
 
+/// A trait for checking if an [`Or`] value is of a certain variant by index.
 pub trait Is {
+    /// Returns `true` if the [`Or`] value corresponds to the given variant
+    /// index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orn::{or2::Or, Is, Or2};
+    ///
+    /// let value: Or2<u8, &str> = Or::T0(42);
+    /// assert!(value.is(0));
+    /// assert!(!value.is(1));
+    ///
+    /// let value: Or2<u8, &str> = Or::T1("hello");
+    /// assert!(!value.is(0));
+    /// assert!(value.is(1));
+    /// ```
     fn is(&self, index: usize) -> bool;
 }
 
+/// A trait for getting the number of type arguments in a type.
+///
+/// This is implemented for [`Or`] types and tuples.
+///
+/// # Examples
+///
+/// ```
+/// use orn::{or3::Or, Count, Or3};
+///
+/// assert_eq!(Or3::<u8, u16, u32>::COUNT, 3);
+/// assert_eq!(<(u8, u16, u32)>::COUNT, 3);
+/// ```
 pub trait Count {
+    /// The number of type arguments.
     const COUNT: usize;
 }
 
@@ -26,10 +123,15 @@ fn with<T, U, F: FnOnce(T) -> U>(item: T, map: F) -> U {
     map(item)
 }
 
+/// A type alias for a union of 0 types. This type is uninhabited.
 pub type Or0 = or0::Or;
+
+/// Contains the [`Or`] enum for 0 types.
 pub mod or0 {
     use super::*;
 
+    /// A union of 0 types. This type is uninhabited, meaning it cannot be
+    /// instantiated.
     pub enum Or {}
 
     impl Count for () {
@@ -39,6 +141,21 @@ pub mod or0 {
     impl Count for Or {
         const COUNT: usize = 0;
     }
+}
+
+#[doc(hidden)]
+macro_rules! ignore_and_stringify {
+    ($to_ignore:tt, $to_stringify:ty) => {
+        stringify!($to_stringify)
+    }
+}
+
+/// A helper macro to generate a comma-separated list of a given type string.
+#[doc(hidden)]
+macro_rules! type_list {
+    ($type:ty, $T1:tt $(, $T:tt)*) => {
+        concat!(stringify!($type) $(, ", ", ignore_and_stringify!($T, $type))*)
+    };
 }
 
 macro_rules! or {
@@ -65,16 +182,38 @@ macro_rules! or {
         );
     };
     (@main $count: tt, $alias: ident, $module: ident [$($index: tt, $same_t: ident, $same_u: ident, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident),*]) => {
+        #[doc = concat!("A type alias for a union of `", stringify!($count), "` types.")]
         pub type $alias<$($t,)*> = $module::Or<$($t,)*>;
 
+        #[doc = concat!("Contains the [`Or`] enum for `", stringify!($count), "` types.")]
         pub mod $module {
             use super::*;
 
+            #[doc = concat!("A union of `", stringify!($count), "` types.")]
+            ///
+            /// See the [crate-level documentation](crate) for more details.
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub enum Or<$($t,)*> { $($t($t)),* }
+            pub enum Or<$($t,)*> {
+                $(
+                    #[doc = concat!("A variant of the [`Or`] enum that contains a `", stringify!($t), "` value.")]
+                    $t($t)
+                ),*
+            }
 
             impl<$($t,)*> Or<$($t,)*> {
+                /// Converts the [`Or`] into a single value of type `T`.
+                ///
+                /// This method is available when all types inside the [`Or`] can be converted into `T`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
+                /// let value: u16 = or.into();
+                /// assert_eq!(value, 42u16);
+                /// ```
                 #[inline]
                 pub fn into<T>(self) -> T where $($t: Into<T>),* {
                     match self {
@@ -82,6 +221,16 @@ macro_rules! or {
                     }
                 }
 
+                /// Converts from `&Or<T...>` to `Or<&T...>`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
+                #[doc = concat!("let or_ref: ", stringify!($module), "::Or<", type_list!(&u8, $($t),*), "> = or.as_ref();")]
+                /// assert!(or_ref.is_t0());
+                /// ```
                 #[inline]
                 pub const fn as_ref(&self) -> Or<$(&$t,)*> {
                     match self {
@@ -89,6 +238,17 @@ macro_rules! or {
                     }
                 }
 
+                /// Converts from `&mut Or<T...>` to `Or<&mut T...>`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                #[doc = concat!("let mut or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
+                /// let or_mut = or.as_mut();
+                /// *or_mut.t0().unwrap() = 100;
+                /// assert_eq!(or.t0(), Some(100));
+                /// ```
                 #[inline]
                 pub fn as_mut(&mut self) -> Or<$(&mut $t,)*> {
                     match self {
@@ -97,6 +257,17 @@ macro_rules! or {
                     }
                 }
 
+                /// Converts from `&Or<T...>` to `Or<&T::Target...>` where `T` implements [`Deref`].
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// use std::ops::Deref;
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
+                #[doc = concat!("let or_deref: ", stringify!($module), "::Or<", type_list!(&str, $($t),*), "> = or.as_deref();")]
+                /// assert_eq!(or_deref.t0(), Some("hello"));
+                /// ```
                 #[inline]
                 pub fn as_deref(&self) -> Or<$(&$t::Target,)*> where $($t: Deref),* {
                     match self {
@@ -104,6 +275,18 @@ macro_rules! or {
                     }
                 }
 
+                /// Converts from `&mut Or<T...>` to `Or<&mut T::Target...>` where `T` implements [`DerefMut`].
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// use std::ops::DerefMut;
+                #[doc = concat!("let mut or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
+                #[doc = concat!("let mut or_deref_mut: ", stringify!($module), "::Or<", type_list!(&mut str, $($t),*), "> = or.as_deref_mut();")]
+                #[doc = concat!("if let ", stringify!($module), "::Or::T0(s) = or_deref_mut { s.make_ascii_uppercase(); }")]
+                /// assert_eq!(or.t0(), Some("HELLO".to_string()));
+                /// ```
                 #[inline]
                 pub fn as_deref_mut(&mut self) -> Or<$(&mut $t::Target,)*> where $($t: DerefMut),* {
                     match self {
@@ -114,6 +297,24 @@ macro_rules! or {
             }
 
             impl<$($t,)*> Or<$(&$t,)*> {
+                /// Maps an `Or<&T...>` to an `Or<T...>` by cloning the contents of the `Or`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// let x = 12;
+                #[doc = concat!("let or_ref: ", stringify!($alias), "<", type_list!(&i32, $($t),*), "> = ", stringify!($module), "::Or::T0(&x);")]
+                #[doc = concat!("let cloned: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_ref.cloned();")]
+                #[doc = concat!("assert_eq!(cloned, ", stringify!($module), "::Or::T0(12));")]
+                /// ```
+                ///
+                /// ```compile_fail
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// struct NonClone;
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(&NonClone, $($t),*), "> = ", stringify!($module), "::Or::T0(&NonClone);")]
+                /// or.cloned();
+                /// ```
                 #[inline]
                 pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
                     match self {
@@ -121,6 +322,24 @@ macro_rules! or {
                     }
                 }
 
+                /// Maps an `Or<&T...>` to an `Or<T...>` by copying the contents of the `Or`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// let x = 12;
+                #[doc = concat!("let or_ref: ", stringify!($alias), "<", type_list!(&i32, $($t),*), "> = ", stringify!($module), "::Or::T0(&x);")]
+                #[doc = concat!("let copied: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_ref.copied();")]
+                #[doc = concat!("assert_eq!(copied, ", stringify!($module), "::Or::T0(12));")]
+                /// ```
+                ///
+                /// ```compile_fail
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// struct NonCopy;
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(&NonCopy, $($t),*), "> = ", stringify!($module), "::Or::T0(&NonCopy);")]
+                /// or.copied();
+                /// ```
                 #[inline]
                 pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
                     match self {
@@ -130,6 +349,17 @@ macro_rules! or {
             }
 
             impl<$($t,)*> Or<$(&mut $t,)*> {
+                /// Maps an `Or<&mut T...>` to an `Or<T...>` by cloning the contents of the `Or`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// let mut x = 12;
+                #[doc = concat!("let or_mut_ref: ", stringify!($alias), "<", type_list!(&mut i32, $($t),*), "> = ", stringify!($module), "::Or::T0(&mut x);")]
+                #[doc = concat!("let cloned: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_mut_ref.cloned();")]
+                #[doc = concat!("assert_eq!(cloned, ", stringify!($module), "::Or::T0(12));")]
+                /// ```
                 #[inline]
                 pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
                     match self {
@@ -137,6 +367,17 @@ macro_rules! or {
                     }
                 }
 
+                /// Maps an `Or<&mut T...>` to an `Or<T...>` by copying the contents of the `Or`.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                /// let mut x = 12;
+                #[doc = concat!("let or_mut_ref: ", stringify!($alias), "<", type_list!(&mut i32, $($t),*), "> = ", stringify!($module), "::Or::T0(&mut x);")]
+                #[doc = concat!("let copied: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_mut_ref.copied();")]
+                #[doc = concat!("assert_eq!(copied, ", stringify!($module), "::Or::T0(12));")]
+                /// ```
                 #[inline]
                 pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
                     match self {
@@ -146,6 +387,17 @@ macro_rules! or {
             }
 
             impl<T> Or<$($same_t,)*> {
+                /// Extracts the inner value from the `Or`.
+                ///
+                /// This method is available when all types in the [`Or`] are the same.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
+                /// assert_eq!(or.into_inner(), 42);
+                /// ```
                 #[inline]
                 pub fn into_inner(self) -> T {
                     match self {
@@ -153,6 +405,16 @@ macro_rules! or {
                     }
                 }
 
+                /// Maps an `Or<T, T...>` to an `Or<U, U...>` by applying a function to the contained value.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
+                #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map(|x| x as u16);")]
+                /// assert_eq!(mapped.into_inner(), 42u16);
+                /// ```
                 #[inline]
                 pub fn map<U, F: FnOnce(T) -> U>(self, map: F) -> Or<$($same_u,)*> {
                     match self {
@@ -160,15 +422,28 @@ macro_rules! or {
                     }
                 }
 
+                /// Maps an `Or<T, T...>` to an `Or<U, U...>` by applying a function with a state to the contained value.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
+                #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map_with(10, |(s, x)| s + x as u16);")]
+                /// assert_eq!(mapped.into_inner(), 52u16);
+                /// ```
                 #[inline]
-                pub fn map_with<S, U, F: FnOnce(S, T) -> U>(self, state:S, map: F) -> Or<$($same_u,)*> {
+                pub fn map_with<S, U, F: FnOnce((S, T)) -> U>(self, state:S, map: F) -> Or<$($same_u,)*> {
                     match self {
-                        $(Self::$t(item) => Or::$t(map(state, item)),)*
+                        $(Self::$t(item) => Or::$t(map((state, item))),)*
                     }
                 }
             }
 
             impl<T, $($t: AsRef<T>),*> AsRef<T> for Or<$($t,)*> {
+                /// Returns a reference to the inner value.
+                ///
+                /// This method is available when all types in the [`Or`] implement [`AsRef<T>`].
                 #[inline]
                 fn as_ref(&self) -> &T {
                     match self {
@@ -178,6 +453,9 @@ macro_rules! or {
             }
 
             impl<T, $($t: AsMut<T>),*> AsMut<T> for Or<$($t,)*> {
+                /// Returns a mutable reference to the inner value.
+                ///
+                /// This method is available when all types in the [`Or`] implement [`AsMut<T>`].
                 #[inline]
                 fn as_mut(&mut self) -> &mut T {
                     match self {
@@ -209,15 +487,38 @@ macro_rules! or {
                 use super::Or;
                 use core::{self, iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator}};
 
+                /// An iterator that yields the items of an [`Or`] of iterators.
                 #[derive(Clone, Copy, Debug)]
                 pub enum Iterator<$($t,)*> { $($t($t)),* }
 
                 impl<$($t,)*> Or<$($t,)*> {
+                    /// Creates an iterator from a reference to an [`Or`].
+                    ///
+                    /// # Examples
+                    ///
+                    /// ```
+                    #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                    #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(Vec<u8>, $($t),*), "> = ", stringify!($module), "::Or::T0(vec![1, 2, 3]);")]
+                    /// let mut iter = or.iter();
+                    /// // The iterator's item type is `Or<T...>` where `T` is `&u8`, which has `into_inner`.
+                    /// assert_eq!(iter.next().unwrap().into_inner(), &1);
+                    /// ```
                     #[inline]
                     pub fn iter(&self) -> Iterator<$(<&$t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a $t: IntoIterator,)* {
                         self.as_ref().into_iter()
                     }
 
+                    /// Creates a mutable iterator from a mutable reference to an [`Or`].
+                    ///
+                    /// # Examples
+                    ///
+                    /// ```
+                    #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                    #[doc = concat!("let mut or: ", stringify!($alias), "<", type_list!(Vec<u8>, $($t),*), "> = ", stringify!($module), "::Or::T0(vec![1, 2, 3]);")]
+                    /// let mut iter = or.iter_mut();
+                    #[doc = concat!("if let ", stringify!($module), "::Or::T0(val) = iter.next().unwrap() { *val = 42; }")]
+                    /// assert_eq!(or.t0().unwrap()[0], 42);
+                    /// ```
                     #[inline]
                     pub fn iter_mut(&mut self) -> Iterator<$(<&mut $t as IntoIterator>::IntoIter,)*> where $(for<'a> &'a mut $t: IntoIterator,)* {
                         self.as_mut().into_iter()
@@ -228,6 +529,17 @@ macro_rules! or {
                     type IntoIter = Iterator<$($t::IntoIter,)*>;
                     type Item = Or<$($t::Item,)*>;
 
+                    /// Creates a consuming iterator.
+                    ///
+                    /// # Examples
+                    ///
+                    /// ```
+                    #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+                    #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(Vec<u8>, $($t),*), "> = ", stringify!($module), "::Or::T0(vec![1, 2, 3]);")]
+                    /// let mut iter = or.into_iter();
+                    /// // The iterator's item type is `Or<T...>` where `T` is `u8`, which has `into_inner`.
+                    /// assert_eq!(iter.next().unwrap().into_inner(), 1);
+                    /// ```
                     #[inline]
                     fn into_iter(self) -> Self::IntoIter {
                         match self {
@@ -268,6 +580,7 @@ macro_rules! or {
                 impl<$($t: FusedIterator),*> FusedIterator for Iterator<$($t,)*> { }
 
                 impl<T, $($t: Extend<T>,)*> Extend<T> for Or<$($t,)*> {
+                    /// Extends the [`Or`] with the contents of an iterator.
                     #[inline]
                     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
                         match self {
@@ -287,6 +600,7 @@ macro_rules! or {
                 };
                 use pin_project::pin_project;
 
+                /// A future that resolves to an [`Or`] of the outputs of the inner futures.
                 #[pin_project(project = Project)]
                 pub enum Future<$($t,)*> {
                     $($t(#[pin] $t),)*
@@ -327,8 +641,10 @@ macro_rules! or {
                 };
                 use core::{iter::Map, ops::RangeBounds, marker::PhantomData};
 
+                /// A parallel iterator that yields the items of an [`Or`] of parallel iterators.
                 #[derive(Clone, Copy, Debug)]
                 pub enum Iterator<$($t,)*> { $($t($t)),* }
+                #[doc(hidden)]
                 pub struct One<T, $($t: ?Sized,)* const N: usize>(pub T, $(PhantomData<$t>,)*);
 
                 impl<T, $($t: ?Sized,)* const N: usize> One<T, $($t,)* N> {
@@ -458,19 +774,29 @@ macro_rules! or {
                 or!(@rayon @outer [$($t),*] [$($index, $t),*]);
             }
 
-            or!(@outer [$($index, $t, $get, $is, $map),*] []);
+            or!(@outer $count, $alias, $module [$($index, $t, $get, $is, $map),*] []);
         }
     };
-    (@outer [] $old: tt) => {};
+    (@outer $count:tt, $alias:ident, $module:ident [] $old:tt) => {};
     (@outer
+        $count:tt, $alias:ident, $module:ident
         [$index: tt, $t: ident, $get: ident, $is: ident, $map: ident $(, $new_index: tt, $new_t: ident, $new_get: ident, $new_is: ident, $new_map: ident)*]
         [$($old_t: ident),*]
     ) => {
-        or!(@inner $index, $t, $get, $is, $map [$($old_t, $old_t, same,)* $t, U, with $(, $new_t, $new_t, same)*]);
-        or!(@outer [$($new_index, $new_t, $new_get, $new_is, $new_map),*] [$($old_t,)* $t]);
+        or!(@inner $count, $alias, $module, $index, $t, $get, $is, $map [$($old_t, $old_t, same,)* $t, U, with $(, $new_t, $new_t, same)*]);
+        or!(@outer $count, $alias, $module [$($new_index, $new_t, $new_get, $new_is, $new_map),*] [$($old_t,)* $t]);
     };
-    (@inner $index: tt, $t: ident, $get: ident, $is: ident, $map: ident [$($ts: ident, $map_t: ident, $map_f: ident),*]) => {
+    (@inner $count: tt, $alias: ident, $module: ident, $index: tt, $t: ident, $get: ident, $is: ident, $map: ident [$($ts: ident, $map_t: ident, $map_f: ident),*]) => {
         impl<$($ts),*> Or<$($ts,)*> {
+            #[doc = concat!("Returns `Some(T)` if the [`Or`] contains the `", stringify!($t), "` variant, otherwise `None`.")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("use orn::{", stringify!($module), "::Or, ", stringify!($alias), "};")]
+            #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = Or::", stringify!($t), "(42);")]
+            #[doc = concat!("assert_eq!(or.", stringify!($get), "(), Some(42));")]
+            /// ```
             #[inline]
             pub fn $get(self) -> Option<$t> {
                 match self {
@@ -480,6 +806,15 @@ macro_rules! or {
                 }
             }
 
+            #[doc = concat!("Returns `true` if the [`Or`] contains the `", stringify!($t), "` variant.")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+            #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = ", stringify!($module), "::Or::", stringify!($t), "(42);")]
+            #[doc = concat!("assert!(or.", stringify!($is), "());")]
+            /// ```
             #[inline]
             pub fn $is(&self) -> bool {
                 match self {
@@ -489,6 +824,16 @@ macro_rules! or {
                 }
             }
 
+            #[doc = concat!("Maps the `", stringify!($t), "` variant of the [`Or`] with the provided function.")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
+            #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = ", stringify!($module), "::Or::", stringify!($t), "(42);")]
+            #[doc = concat!("let mapped = or.", stringify!($map), "(|x| x.to_string());")]
+            #[doc = concat!("assert_eq!(mapped.", stringify!($get), "(), Some(\"42\".to_string()));")]
+            /// ```
             #[inline]
             pub fn $map<U, F: FnOnce($t) -> U>(self, map: F) -> Or<$($map_t,)*> {
                 match self {
