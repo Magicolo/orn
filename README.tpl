@@ -1,9 +1,10 @@
 <div align="center"> <h1> {{ package.name }} {{ package.version }} </h1> </div>
 
 <p align="center">
-    <em> 
+    <i> 
+    
 {{ package.description }}
-    </em>
+    </i>
 </p>
 
 <div align="right">
