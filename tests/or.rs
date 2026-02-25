@@ -232,3 +232,77 @@ fn fmt_write_t1() {
     write!(or, "world {}", 7).unwrap();
     assert_eq!(or.t1().unwrap(), "world 7");
 }
+
+// Widening: From<OrK> for OrN (K < N, prefix embedding)
+#[test]
+fn widen_or1_into_or2_t0() {
+    let src: orn::Or1<u8> = orn::Or1::T0(42);
+    let dst = orn::Or2::<u8, u16>::from(src);
+    assert_eq!(dst, orn::Or2::T0(42u8));
+}
+
+#[test]
+fn widen_or2_into_or3_t0() {
+    let src: orn::Or2<u8, u16> = orn::Or2::T0(1);
+    let dst = orn::Or3::<u8, u16, u32>::from(src);
+    assert_eq!(dst, orn::Or3::T0(1u8));
+}
+
+#[test]
+fn widen_or2_into_or3_t1() {
+    let src: orn::Or2<u8, u16> = orn::Or2::T1(2);
+    let dst = orn::Or3::<u8, u16, u32>::from(src);
+    assert_eq!(dst, orn::Or3::T1(2u16));
+}
+
+#[test]
+fn widen_or2_into_or4() {
+    let src: orn::Or2<u8, u16> = orn::Or2::T1(7);
+    let dst = orn::Or4::<u8, u16, u32, u64>::from(src);
+    assert_eq!(dst, orn::Or4::T1(7u16));
+}
+
+// Narrowing: TryFrom<OrN> for OrK (K < N, prefix projection)
+#[test]
+fn narrow_or3_to_or2_ok_t0() {
+    let src: orn::Or3<u8, u16, u32> = orn::Or3::T0(1);
+    let result = orn::Or2::<u8, u16>::try_from(src);
+    assert_eq!(result, Ok(orn::Or2::T0(1u8)));
+}
+
+#[test]
+fn narrow_or3_to_or2_ok_t1() {
+    let src: orn::Or3<u8, u16, u32> = orn::Or3::T1(2);
+    let result = orn::Or2::<u8, u16>::try_from(src);
+    assert_eq!(result, Ok(orn::Or2::T1(2u16)));
+}
+
+#[test]
+fn narrow_or3_to_or2_err() {
+    let src: orn::Or3<u8, u16, u32> = orn::Or3::T2(3);
+    let result = orn::Or2::<u8, u16>::try_from(src);
+    assert_eq!(result, Err(orn::Or3::T2(3u32)));
+}
+
+#[test]
+fn narrow_or4_to_or1_ok() {
+    let src: orn::Or4<u8, u16, u32, u64> = orn::Or4::T0(5);
+    let result = orn::Or1::<u8>::try_from(src);
+    assert_eq!(result, Ok(orn::Or1::T0(5u8)));
+}
+
+#[test]
+fn narrow_or4_to_or1_err() {
+    let src: orn::Or4<u8, u16, u32, u64> = orn::Or4::T3(9);
+    let result = orn::Or1::<u8>::try_from(src);
+    assert_eq!(result, Err(orn::Or4::T3(9u64)));
+}
+
+// Widening and narrowing roundtrip
+#[test]
+fn widen_then_narrow_roundtrip() {
+    let original: orn::Or2<u8, u16> = orn::Or2::T1(99);
+    let widened = orn::Or3::<u8, u16, u32>::from(original);
+    let narrowed = orn::Or2::<u8, u16>::try_from(widened);
+    assert_eq!(narrowed, Ok(original));
+}

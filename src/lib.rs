@@ -211,23 +211,104 @@ macro_rules! or {
         [$($count: tt, $alias: ident, $module: ident),* $(,)?]
         [$($index: tt, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident),* $(,)?]
     ) => {
-        or!(@next [$($count, $alias, $module),*] [$($index, $t, $u, $f, $get, $is, $map),*] []);
+        or!(@next [$($count, $alias, $module),*] [$($index, $t, $u, $f, $get, $is, $map),*] [] []);
     };
-    (@next [] [] $old: tt) => {};
+    (@next [] [] $old: tt $done: tt) => {};
     (@next
         [$count: tt, $alias: ident, $module: ident $(, $counts: tt, $aliases: ident, $modules: ident)*]
         [$index: tt, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident $(, $new_index: tt, $new_t: ident, $new_u: ident, $new_f: ident, $new_get: ident, $new_is: ident, $new_map: ident)*]
         [$($old_index: tt, $old_t: ident, $old_u: ident, $old_f: ident, $old_get: ident, $old_is: ident, $old_map: ident),*]
+        [$($done_entry: tt),*]
     ) => {
         or!(@main
             $count, $alias, $module
             [$($old_index, T, U, $old_t, $old_u, $old_f, $old_get, $old_is, $old_map,)* $index, T, U, $t, $u, $f, $get, $is, $map]
         );
+        or!(@conv_all
+            [$($done_entry),*]
+            $module, [$($old_t,)* $t]
+        );
         or!(@next
             [$($counts, $aliases, $modules),*]
             [$($new_index, $new_t, $new_u, $new_f, $new_get, $new_is, $new_map),*]
             [$($old_index, $old_t, $old_u, $old_f, $old_get, $old_is, $old_map,)* $index, $t, $u, $f, $get, $is, $map]
+            [$($done_entry,)* ($module, [$($old_t,)* $t])]
         );
+    };
+    // Generate From/TryFrom impls from every already-processed module to the current one.
+    (@conv_all [] $dst_module: ident, $dst_types: tt) => {};
+    (@conv_all
+        [($src_module: ident, $src_types: tt) $(, ($more_module: ident, $more_types: tt))*]
+        $dst_module: ident, $dst_types: tt
+    ) => {
+        or!(@conv_one $src_module, $src_types, $dst_module, $dst_types);
+        or!(@conv_all [$(($more_module, $more_types)),*] $dst_module, $dst_types);
+    };
+    // Kick off the peel that strips src types from the front of the dst type list.
+    (@conv_one
+        $src_module: ident, [$($src_t: ident),+],
+        $dst_module: ident, [$($dst_t: ident),+]
+    ) => {
+        or!(@conv_peel
+            $src_module, [$($src_t),+],
+            $dst_module,
+            [$($src_t),+],
+            [$($dst_t),+]
+        );
+    };
+    // Base case: nothing left to peel — remaining dst types are the "extra" ones.
+    (@conv_peel
+        $src_module: ident, [$($src_t: ident),+],
+        $dst_module: ident,
+        [],
+        [$($extra_t: ident),+]
+    ) => {
+        or!(@conv_impl $src_module, [$($src_t),+], $dst_module, [$($extra_t),+]);
+    };
+    // Recursive case: drop one element from both the peel list and the dst list.
+    (@conv_peel
+        $src_module: ident, [$($src_t: ident),+],
+        $dst_module: ident,
+        [$_head: ident $(, $rest_peel: ident)*],
+        [$_skip: ident $(, $rest_dst: ident)*]
+    ) => {
+        or!(@conv_peel
+            $src_module, [$($src_t),+],
+            $dst_module,
+            [$($rest_peel),*],
+            [$($rest_dst),*]
+        );
+    };
+    // Emit the actual From and TryFrom impls for one (src, dst) prefix pair.
+    (@conv_impl
+        $src_module: ident, [$($src_t: ident),+],
+        $dst_module: ident, [$($extra_t: ident),+]
+    ) => {
+        impl<$($src_t,)+ $($extra_t,)+> From<$src_module::Or<$($src_t,)+>>
+            for $dst_module::Or<$($src_t,)+ $($extra_t,)+>
+        {
+            #[inline]
+            fn from(value: $src_module::Or<$($src_t,)+>) -> Self {
+                match value {
+                    $($src_module::Or::$src_t(x) => $dst_module::Or::$src_t(x),)+
+                }
+            }
+        }
+
+        impl<$($src_t,)+ $($extra_t,)+> TryFrom<$dst_module::Or<$($src_t,)+ $($extra_t,)+>>
+            for $src_module::Or<$($src_t,)+>
+        {
+            type Error = $dst_module::Or<$($src_t,)+ $($extra_t,)+>;
+            #[inline]
+            fn try_from(
+                value: $dst_module::Or<$($src_t,)+ $($extra_t,)+>,
+            ) -> Result<Self, Self::Error> {
+                match value {
+                    $($dst_module::Or::$src_t(x) => Ok($src_module::Or::$src_t(x)),)+
+                    other => Err(other),
+                }
+            }
+        }
     };
     (@main $count: tt, $alias: ident, $module: ident [$($index: tt, $same_t: ident, $same_u: ident, $t: ident, $u: ident, $f: ident, $get: ident, $is: ident, $map: ident),*]) => {
         #[doc = concat!("An `enum` of `", stringify!($count), "` variants.")]
