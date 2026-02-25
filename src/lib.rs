@@ -550,6 +550,29 @@ macro_rules! or {
                 }
             }
 
+            impl<$($t: fmt::Write,)*> fmt::Write for Or<$($t,)*> {
+                #[inline]
+                fn write_str(&mut self, s: &str) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => item.write_str(s),)*
+                    }
+                }
+
+                #[inline]
+                fn write_char(&mut self, c: char) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => item.write_char(c),)*
+                    }
+                }
+
+                #[inline]
+                fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => item.write_fmt(args),)*
+                    }
+                }
+            }
+
             impl<$($t: error::Error,)*> error::Error for Or<$($t,)*> {
                 fn source(&self) -> Option<&(dyn error::Error + 'static)> {
                     match self {

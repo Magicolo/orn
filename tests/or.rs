@@ -210,3 +210,20 @@ fn or2_is_error() {
     let _: &dyn Error = &err;
     assert_eq!(format!("{}", err), "E1");
 }
+
+#[test]
+fn fmt_write_t0() {
+    use core::fmt::Write;
+    let mut or: orn::Or2<String, String> = orn::Or2::T0(String::new());
+    write!(or, "hello {}", 42).unwrap();
+    assert_eq!(or.t0().unwrap(), "hello 42");
+}
+
+#[test]
+fn fmt_write_t1() {
+    use core::fmt::Write;
+    let mut or: orn::Or2<String, String> = orn::Or2::T1(String::new());
+    write!(or, "world {}", 7).unwrap();
+    assert_eq!(or.t1().unwrap(), "world 7");
+}
+
