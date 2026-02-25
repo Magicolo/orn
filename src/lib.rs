@@ -157,6 +157,7 @@ macro_rules! or {
                 /// let value: u16 = or.into();
                 /// assert_eq!(value, 42u16);
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn into<T>(self) -> T where $($t: Into<T>),* {
                     match self {
@@ -174,6 +175,7 @@ macro_rules! or {
                 #[doc = concat!("let or_ref: ", stringify!($module), "::Or<", type_list!(&u8, $($t),*), "> = or.as_ref();")]
                 /// assert!(or_ref.is_t0());
                 /// ```
+                #[must_use]
                 #[inline]
                 pub const fn as_ref(&self) -> Or<$(&$t,)*> {
                     match self {
@@ -192,6 +194,7 @@ macro_rules! or {
                 /// *or_mut.t0().unwrap() = 100;
                 /// assert_eq!(or.t0(), Some(100));
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn as_mut(&mut self) -> Or<$(&mut $t,)*> {
                     match self {
@@ -211,6 +214,7 @@ macro_rules! or {
                 #[doc = concat!("let or_deref: ", stringify!($module), "::Or<", type_list!(&str, $($t),*), "> = or.as_deref();")]
                 /// assert_eq!(or_deref.t0(), Some("hello"));
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn as_deref(&self) -> Or<$(&$t::Target,)*> where $($t: Deref),* {
                     match self {
@@ -230,6 +234,7 @@ macro_rules! or {
                 #[doc = concat!("if let ", stringify!($module), "::Or::T0(s) = or_deref_mut { s.make_ascii_uppercase(); }")]
                 /// assert_eq!(or.t0(), Some("HELLO".to_string()));
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn as_deref_mut(&mut self) -> Or<$(&mut $t::Target,)*> where $($t: DerefMut),* {
                     match self {
@@ -241,6 +246,7 @@ macro_rules! or {
                 ///
                 /// Each element in the resulting array contains the corresponding tuple element
                 /// wrapped in the matching [`Or`] variant.
+                #[must_use]
                 #[inline]
                 pub fn from_tuple(tuple: ($($t,)*)) -> [Self; $count] {
                     let ($($get,)*) = tuple;
@@ -266,6 +272,7 @@ macro_rules! or {
                 /// tuple on success, or `Err` with the original array otherwise.
                 ///
                 /// Call [`Or::sort_by_variant`] first to handle out-of-order arrays.
+                #[must_use]
                 #[inline]
                 pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
                     #[allow(unreachable_patterns)]
@@ -295,6 +302,7 @@ macro_rules! or {
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(&NonClone, $($t),*), "> = ", stringify!($module), "::Or::T0(&NonClone);")]
                 /// or.cloned();
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
                     match self {
@@ -320,6 +328,7 @@ macro_rules! or {
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(&NonCopy, $($t),*), "> = ", stringify!($module), "::Or::T0(&NonCopy);")]
                 /// or.copied();
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
                     match self {
@@ -340,6 +349,7 @@ macro_rules! or {
                 #[doc = concat!("let cloned: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_mut_ref.cloned();")]
                 #[doc = concat!("assert_eq!(cloned, ", stringify!($module), "::Or::T0(12));")]
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
                     match self {
@@ -358,6 +368,7 @@ macro_rules! or {
                 #[doc = concat!("let copied: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_mut_ref.copied();")]
                 #[doc = concat!("assert_eq!(copied, ", stringify!($module), "::Or::T0(12));")]
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
                     match self {
@@ -378,6 +389,7 @@ macro_rules! or {
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
                 /// assert_eq!(or.into_inner(), 42);
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn into_inner(self) -> T {
                     match self {
@@ -395,6 +407,7 @@ macro_rules! or {
                 #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map(|x| x as u16);")]
                 /// assert_eq!(mapped.into_inner(), 42u16);
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn map<U, F: FnOnce(T) -> U>(self, map: F) -> Or<$($same_u,)*> {
                     match self {
@@ -826,6 +839,7 @@ macro_rules! or {
             #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = Or::", stringify!($t), "(42);")]
             #[doc = concat!("assert_eq!(or.", stringify!($get), "(), Some(42));")]
             /// ```
+            #[must_use]
             #[inline]
             pub fn $get(self) -> Option<$t> {
                 match self {
@@ -844,6 +858,7 @@ macro_rules! or {
             #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = ", stringify!($module), "::Or::", stringify!($t), "(42);")]
             #[doc = concat!("assert!(or.", stringify!($is), "());")]
             /// ```
+            #[must_use]
             #[inline]
             pub fn $is(&self) -> bool {
                 match self {
@@ -863,6 +878,7 @@ macro_rules! or {
             #[doc = concat!("let mapped = or.", stringify!($map), "(|x| x.to_string());")]
             #[doc = concat!("assert_eq!(mapped.", stringify!($get), "(), Some(\"42\".to_string()));")]
             /// ```
+            #[must_use]
             #[inline]
             pub fn $map<U, F: FnOnce($t) -> U>(self, map: F) -> Or<$($map_t,)*> {
                 match self {
