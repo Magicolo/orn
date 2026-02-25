@@ -1138,3 +1138,10 @@ or!(
         31, T31, U31, F31, t31, is_t31, map_t31,
     ]
 );
+
+impl<T0> From<T0> for or1::Or<T0> {
+    #[inline]
+    fn from(value: T0) -> Self {
+        Self::T0(value)
+    }
+}
