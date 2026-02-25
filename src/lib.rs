@@ -527,6 +527,13 @@ macro_rules! or {
                             $(Self::$t(item) => Some(Or::$t(item.next()?)),)*
                         }
                     }
+
+                    #[inline]
+                    fn size_hint(&self) -> (usize, Option<usize>) {
+                        match self {
+                            $(Self::$t(item) => item.size_hint(),)*
+                        }
+                    }
                 }
 
                 impl<$($t: DoubleEndedIterator),*> DoubleEndedIterator for Iterator<$($t,)*> {
