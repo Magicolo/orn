@@ -239,12 +239,32 @@ macro_rules! or {
 
                 /// Tries to convert an array `[Or<T0, T1, ..., TN>; N]` into a tuple `(T0, T1, ..., TN)`.
                 ///
-                /// Returns `Some` if each element in the array contains the matching variant,
-                /// or `None` if any element does not match the expected variant.
+                /// Elements in the array may appear in any order; there must be exactly one of
+                /// each variant. Returns `Ok` with the assembled tuple on success, or `Err` with
+                /// the original array if any variant is missing or appears more than once.
                 #[inline]
-                pub fn try_into_tuple(array: [Self; $count]) -> Option<($($t,)*)> {
-                    let [$($get,)*] = array;
-                    Some(($( $get.$get()?, )*))
+                pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
+                    let valid = {
+                        $(let mut $get = false;)*
+                        let mut ok = true;
+                        for item in array.iter() {
+                            match item {
+                                $(Self::$t(_) => {
+                                    if $get { ok = false; break; }
+                                    $get = true;
+                                })*
+                            }
+                        }
+                        ok
+                    };
+                    if !valid { return Err(array); }
+                    $(let mut $get: Option<$t> = None;)*
+                    for item in array {
+                        match item {
+                            $(Self::$t(v) => { $get = Some(v); })*
+                        }
+                    }
+                    Ok(($( $get.unwrap(), )*))
                 }
             }
 
