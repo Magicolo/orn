@@ -74,12 +74,13 @@ pub mod or0 {
 
     /// A union of 0 types.
     ///
-    /// This type is **uninhabited**: it has no variants and cannot be instantiated.
-    /// It is analogous to Rust's [never type](https://doc.rust-lang.org/std/primitive.never.html)
-    /// `!` (currently unstable) and to the mathematical concept of the empty sum type.
+    /// This type is **uninhabited**: it has no variants and cannot be
+    /// instantiated. It is analogous to Rust's [never type](https://doc.rust-lang.org/std/primitive.never.html)
+    /// `!` (currently unstable) and to the mathematical concept of the empty
+    /// sum type.
     ///
-    /// A function returning `Or0` can never return normally; a value of type `Or0`
-    /// can never exist at runtime.
+    /// A function returning `Or0` can never return normally; a value of type
+    /// `Or0` can never exist at runtime.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum Or {}
 
@@ -101,15 +102,18 @@ pub mod or0 {
     #[cfg(feature = "iter")]
     pub mod iter {
         use super::Or;
-        use core::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator};
+        use core::{
+            convert::Infallible,
+            iter::{self, DoubleEndedIterator, ExactSizeIterator, FusedIterator},
+        };
 
-        /// An iterator over an [`Or`] of iterators. Since [`Or`] is uninhabited,
-        /// this iterator always yields no items.
+        /// An iterator over an [`Or`] of iterators. Since [`Or`] is
+        /// uninhabited, this iterator always yields no items.
         pub enum Iterator {}
 
         impl IntoIterator for Or {
-            type Item = core::convert::Infallible;
             type IntoIter = Iterator;
+            type Item = core::convert::Infallible;
 
             #[inline]
             fn into_iter(self) -> Self::IntoIter {
@@ -117,8 +121,8 @@ pub mod or0 {
             }
         }
 
-        impl core::iter::Iterator for Iterator {
-            type Item = core::convert::Infallible;
+        impl iter::Iterator for Iterator {
+            type Item = Infallible;
 
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
@@ -152,7 +156,8 @@ pub mod or0 {
     pub mod future {
         use super::Or;
         use core::{
-            future::IntoFuture,
+            convert::Infallible,
+            future::{self, IntoFuture},
             pin::Pin,
             task::{Context, Poll},
         };
@@ -162,8 +167,8 @@ pub mod or0 {
         pub enum Future {}
 
         impl IntoFuture for Or {
-            type Output = core::convert::Infallible;
             type IntoFuture = Future;
+            type Output = Infallible;
 
             #[inline]
             fn into_future(self) -> Self::IntoFuture {
@@ -171,8 +176,8 @@ pub mod or0 {
             }
         }
 
-        impl core::future::Future for Future {
-            type Output = core::convert::Infallible;
+        impl future::Future for Future {
+            type Output = Infallible;
 
             #[inline]
             fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
