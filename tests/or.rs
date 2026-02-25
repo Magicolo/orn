@@ -54,23 +54,18 @@ fn try_into_tuple_out_of_order_or3() {
 }
 
 #[test]
-fn try_into_tuple_failure_duplicate_returns_original_array() {
-    // Duplicate T1, missing T0 — Err should contain the original array
+fn try_into_tuple_failure_duplicate_or2() {
+    // Duplicate T1, missing T0 — must be Err (exact sorted contents not guaranteed for equal keys)
     let array: [orn::Or2<u8, u16>; 2] = [orn::Or2::T1(100u16), orn::Or2::T1(200u16)];
-    let result = orn::Or2::<u8, u16>::try_into_tuple(array);
-    assert_eq!(result, Err([orn::Or2::T1(100u16), orn::Or2::T1(200u16)]));
+    assert!(orn::Or2::<u8, u16>::try_into_tuple(array).is_err());
 }
 
 #[test]
 fn try_into_tuple_failure_duplicate_or3() {
-    // Duplicate T0, missing T2
+    // Duplicate T0, missing T2 — must be Err
     let array: [orn::Or3<u8, u16, u32>; 3] =
         [orn::Or3::T0(1u8), orn::Or3::T1(2u16), orn::Or3::T0(3u8)];
-    let result = orn::Or3::<u8, u16, u32>::try_into_tuple(array);
-    assert_eq!(
-        result,
-        Err([orn::Or3::T0(1u8), orn::Or3::T1(2u16), orn::Or3::T0(3u8)])
-    );
+    assert!(orn::Or3::<u8, u16, u32>::try_into_tuple(array).is_err());
 }
 
 #[test]

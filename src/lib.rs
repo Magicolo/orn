@@ -240,31 +240,19 @@ macro_rules! or {
                 /// Tries to convert an array `[Or<T0, T1, ..., TN>; N]` into a tuple `(T0, T1, ..., TN)`.
                 ///
                 /// Elements in the array may appear in any order; there must be exactly one of
-                /// each variant. Returns `Ok` with the assembled tuple on success, or `Err` with
-                /// the original array if any variant is missing or appears more than once.
+                /// each variant. The array is sorted by variant index before conversion. Returns
+                /// `Ok` with the assembled tuple on success, or `Err` with the sorted array
+                /// if any variant is missing or appears more than once.
                 #[inline]
-                pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
-                    let valid = {
-                        $(let mut $get = false;)*
-                        let mut ok = true;
-                        for item in array.iter() {
-                            match item {
-                                $(Self::$t(_) => {
-                                    if $get { ok = false; break; }
-                                    $get = true;
-                                })*
-                            }
-                        }
-                        ok
-                    };
-                    if !valid { return Err(array); }
-                    $(let mut $get: Option<$t> = None;)*
-                    for item in array {
-                        match item {
-                            $(Self::$t(v) => { $get = Some(v); })*
-                        }
+                pub fn try_into_tuple(mut array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
+                    array.sort_unstable_by_key(|item| match item {
+                        $(Self::$t(_) => $index,)*
+                    });
+                    #[allow(unreachable_patterns)]
+                    match array {
+                        [$( Self::$t($get) ),*] => Ok(($($get,)*)),
+                        other => Err(other),
                     }
-                    Ok(($( $get.unwrap(), )*))
                 }
             }
 
