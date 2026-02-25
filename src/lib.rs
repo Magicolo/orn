@@ -224,7 +224,44 @@ macro_rules! or {
                 pub fn as_deref_mut(&mut self) -> Or<$(&mut $t::Target,)*> where $($t: DerefMut),* {
                     match self {
                         $(Self::$t(item) => Or::$t(item.deref_mut()),)*
+                    }
+                }
 
+                /// Converts a tuple `(T0, T1, ..., TN)` into an array `[Or<T0, T1, ..., TN>; N]`.
+                ///
+                /// Each element in the resulting array contains the corresponding tuple element
+                /// wrapped in the matching [`Or`] variant.
+                #[inline]
+                pub fn from_tuple(tuple: ($($t,)*)) -> [Self; $count] {
+                    let ($($get,)*) = tuple;
+                    [$( Self::$t($get), )*]
+                }
+
+                /// Sorts a slice of [`Or`] values in-place by variant index (`T0` first, then
+                /// `T1`, …, `TN` last).
+                ///
+                /// This is useful as a preprocessing step before calling [`Or::try_into_tuple`],
+                /// which requires elements to be in order.
+                #[inline]
+                pub fn sort_by_variant(slice: &mut [Self]) {
+                    slice.sort_unstable_by_key(|item| match item {
+                        $(Self::$t(_) => $index,)*
+                    });
+                }
+
+                /// Tries to convert an array `[Or<T0, T1, ..., TN>; N]` into a tuple `(T0, T1, ..., TN)`.
+                ///
+                /// Each element must contain the matching variant at its position: index `0` must
+                /// be `T0`, index `1` must be `T1`, and so on. Returns `Ok` with the assembled
+                /// tuple on success, or `Err` with the original array otherwise.
+                ///
+                /// Call [`Or::sort_by_variant`] first to handle out-of-order arrays.
+                #[inline]
+                pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
+                    #[allow(unreachable_patterns)]
+                    match array {
+                        [$( Self::$t($get) ),*] => Ok(($($get,)*)),
+                        other => Err(other),
                     }
                 }
             }
