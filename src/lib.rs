@@ -429,6 +429,14 @@ macro_rules! or {
                 }
             }
 
+            impl<$($t: core::error::Error,)*> core::error::Error for Or<$($t,)*> {
+                fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+                    match self {
+                        $(Self::$t(item) => item.source(),)*
+                    }
+                }
+            }
+
             impl<$($t,)*> Count for ($($t,)*) {
                 const COUNT: usize = $count;
             }
