@@ -18,12 +18,12 @@ default = ["iter", "future"]
 or16 = []
 or32 = ["or16"]
 iter = []
-future = ["dep:pin-project"]
+future = ["dep:pin-project-lite"]
 serde = ["dep:serde"]
 rayon = ["dep:rayon"]
 
 [dependencies]
-pin-project = { version = "1.1", optional = true, default-features = false }
+pin-project-lite = { version = "0.2", optional = true, default-features = false }
 serde = { version = "1.0", optional = true, default-features = false }
 rayon = { version = "1.11", optional = true, default-features = false }
 

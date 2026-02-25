@@ -763,12 +763,14 @@ macro_rules! or {
                     pin::Pin,
                     task::{Context, Poll},
                 };
-                use pin_project::pin_project;
+                use pin_project_lite::pin_project;
 
-                /// A future that resolves to an [`Or`] of the outputs of the inner futures.
-                #[pin_project(project = Project)]
-                pub enum Future<$($t,)*> {
-                    $($t(#[pin] $t),)*
+                pin_project! {
+                    /// A future that resolves to an [`Or`] of the outputs of the inner futures.
+                    #[project = Project]
+                    pub enum Future<$($t,)*> {
+                        $($t { #[pin] inner: $t },)*
+                    }
                 }
 
                 impl<$($t: IntoFuture),*> IntoFuture for Or<$($t,)*> {
@@ -778,7 +780,7 @@ macro_rules! or {
                     #[inline]
                     fn into_future(self) -> Self::IntoFuture {
                         match self {
-                            $(Self::$t(item) => Future::$t(item.into_future()),)*
+                            $(Self::$t(item) => Future::$t { inner: item.into_future() },)*
                         }
                     }
                 }
@@ -789,7 +791,7 @@ macro_rules! or {
                     #[inline]
                     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
                         match self.project() {
-                            $(Project::$t(item) => item.poll(cx).map(Or::$t),)*
+                            $(Project::$t { inner: item } => item.poll(cx).map(Or::$t),)*
                         }
                     }
                 }
