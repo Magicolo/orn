@@ -126,6 +126,7 @@ macro_rules! or {
 
             #[doc = concat!("An `enum` of `", stringify!($count), "` variants.")]
             #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+            #[cfg_attr(feature = "serde", serde(untagged))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Or<$($t,)*> {
                 $(

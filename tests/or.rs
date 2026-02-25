@@ -93,3 +93,34 @@ fn from_tuple_try_into_tuple_roundtrip() {
     let result = orn::Or3::<u8, u16, u32>::try_into_tuple(array);
     assert_eq!(result, Ok(original));
 }
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_untagged_serialize_or2() {
+    let t0: orn::Or2<u8, &str> = orn::Or2::T0(42);
+    let t1: orn::Or2<u8, &str> = orn::Or2::T1("hello");
+    assert_eq!(serde_json::to_string(&t0).unwrap(), "42");
+    assert_eq!(serde_json::to_string(&t1).unwrap(), r#""hello""#);
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_untagged_deserialize_or2() {
+    let t0: orn::Or2<u8, String> = serde_json::from_str("42").unwrap();
+    let t1: orn::Or2<u8, String> = serde_json::from_str(r#""hello""#).unwrap();
+    assert_eq!(t0, orn::Or2::T0(42));
+    assert_eq!(t1, orn::Or2::T1("hello".to_string()));
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_untagged_roundtrip_or3() {
+    let t0: orn::Or3<u8, String, bool> = orn::Or3::T0(1);
+    let t1: orn::Or3<u8, String, bool> = orn::Or3::T1("hello".to_string());
+    let t2: orn::Or3<u8, String, bool> = orn::Or3::T2(true);
+    for (val, json) in [(t0, "1"), (t1, r#""hello""#), (t2, "true")] {
+        assert_eq!(serde_json::to_string(&val).unwrap(), json);
+        let back: orn::Or3<u8, String, bool> = serde_json::from_str(json).unwrap();
+        assert_eq!(back, val);
+    }
+}
