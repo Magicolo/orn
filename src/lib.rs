@@ -434,6 +434,15 @@ macro_rules! or {
                 }
             }
 
+            impl<$($t: core::fmt::Display,)*> core::fmt::Display for Or<$($t,)*> {
+                #[inline]
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                    match self {
+                        $(Self::$t(item) => core::fmt::Display::fmt(item, f),)*
+                    }
+                }
+            }
+
             impl<$($t,)*> Count for ($($t,)*) {
                 const COUNT: usize = $count;
             }
