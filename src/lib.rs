@@ -237,7 +237,6 @@ macro_rules! or {
             use super::*;
 
             #[doc = concat!("An `enum` of `", stringify!($count), "` variants.")]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
             #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Or<$($t,)*> {
                 $(
@@ -916,6 +915,115 @@ macro_rules! or {
                 }
 
                 or!(@rayon @outer [$($t),*] [$($index, $t),*]);
+            }
+
+            #[cfg(feature = "serde")]
+            impl<$($t: serde::Serialize,)*> serde::Serialize for Or<$($t,)*> {
+                fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    match self { $(Self::$t(v) => v.serialize(serializer),)* }
+                }
+            }
+
+            #[cfg(feature = "serde")]
+            impl<'de, $($t: serde::Deserialize<'de>,)*> serde::Deserialize<'de> for Or<$($t,)*> {
+                fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                    struct OrVisitor<'de, $($t,)*>(core::marker::PhantomData<(&'de (), $($t,)*)>);
+
+                    impl<'de, $($t: serde::Deserialize<'de>,)*> serde::de::Visitor<'de> for OrVisitor<'de, $($t,)*> {
+                        type Value = Or<$($t,)*>;
+
+                        fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                            f.write_str("any value")
+                        }
+
+                        fn visit_bool<E: serde::de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::BoolDeserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Bool(v), &self))
+                        }
+
+                        fn visit_i8<E: serde::de::Error>(self, v: i8) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::I8Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Signed(v as i64), &self))
+                        }
+
+                        fn visit_i16<E: serde::de::Error>(self, v: i16) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::I16Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Signed(v as i64), &self))
+                        }
+
+                        fn visit_i32<E: serde::de::Error>(self, v: i32) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::I32Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Signed(v as i64), &self))
+                        }
+
+                        fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::I64Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Signed(v), &self))
+                        }
+
+                        fn visit_i128<E: serde::de::Error>(self, v: i128) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::I128Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Other("i128"), &self))
+                        }
+
+                        fn visit_u8<E: serde::de::Error>(self, v: u8) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::U8Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Unsigned(v as u64), &self))
+                        }
+
+                        fn visit_u16<E: serde::de::Error>(self, v: u16) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::U16Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Unsigned(v as u64), &self))
+                        }
+
+                        fn visit_u32<E: serde::de::Error>(self, v: u32) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::U32Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Unsigned(v as u64), &self))
+                        }
+
+                        fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::U64Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Unsigned(v), &self))
+                        }
+
+                        fn visit_u128<E: serde::de::Error>(self, v: u128) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::U128Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Other("u128"), &self))
+                        }
+
+                        fn visit_f32<E: serde::de::Error>(self, v: f32) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::F32Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Float(v as f64), &self))
+                        }
+
+                        fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::F64Deserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Float(v), &self))
+                        }
+
+                        fn visit_char<E: serde::de::Error>(self, v: char) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::CharDeserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Char(v), &self))
+                        }
+
+                        fn visit_borrowed_str<E: serde::de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::BorrowedStrDeserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Str(v), &self))
+                        }
+
+                        fn visit_borrowed_bytes<E: serde::de::Error>(self, v: &'de [u8]) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::BorrowedBytesDeserializer::<E>::new(v)) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Bytes(v), &self))
+                        }
+
+                        fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                            $(if let Ok(val) = $t::deserialize(serde::de::value::UnitDeserializer::<E>::new()) { return Ok(Or::$t(val)); })*
+                            Err(E::invalid_type(serde::de::Unexpected::Unit, &self))
+                        }
+                    }
+
+                    deserializer.deserialize_any(OrVisitor(core::marker::PhantomData))
+                }
             }
 
             or!(@outer $count, $alias, $module [$($index, $t, $get, $is, $map),*] []);

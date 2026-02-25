@@ -18,7 +18,7 @@ A generic implementation of a sum type (or discriminated union). It provides `en
 - supports the applicable core traits
 - `features = ["iter"]` *(default)*: supports the `Into/Iterator` traits 
 - `features = ["future"]` *(default)*: supports the `Into/Future` traits 
-- `features = ["serde"]`: supports the `Serialize` and `Deserialize` traits
+- `features = ["serde"]`: supports the `Serialize` and `Deserialize` traits using serde's [**untagged** enum representation](https://serde.rs/enum-representations.html#untagged); for example, `Or2::<u8, &str>::T0(42)` serializes to JSON as `42` and `Or2::<u8, &str>::T1("hello")` serializes to `"hello"`. Note that for untagged enums Serde deserialization tries each variant in order and picks the first one that matches, so avoid overlapping representations (for example, multiple numeric types like `u8` and `u64`) or be aware that the variant order will determine which one is chosen.
 - `features = ["rayon"]`: supports the `ParallelIterator` family of traits
 - `features = ["or16"]`: for up to `Or16`
 - `features = ["or32"]`: for up to `Or32`
