@@ -11,8 +11,10 @@ fn compiles() {
 }
 
 #[test]
-fn size_hint() {
-    assert_eq!(or(vec![1, 2, 3]).into_iter().size_hint(), (3, Some(3)));
+fn size_hint_exact_size() {
+    let v = vec![1u8, 2u8, 3u8];
+    let iter = Or2::<Vec<u8>, Vec<u8>>::T0(v).into_iter();
+    assert_eq!(iter.size_hint(), (3, Some(3)));
 }
 
 #[test]

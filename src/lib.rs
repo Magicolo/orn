@@ -2,7 +2,10 @@
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
-use core::ops::{Deref, DerefMut};
+use core::{
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 /// A trait for accessing a type at a specific index.
 ///
@@ -196,7 +199,7 @@ macro_rules! or {
                 ///
                 /// ```
                 #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                /// use std::ops::Deref;
+                /// use core::ops::Deref;
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
                 #[doc = concat!("let or_deref: ", stringify!($module), "::Or<", type_list!(&str, $($t),*), "> = or.as_deref();")]
                 /// assert_eq!(or_deref.t0(), Some("hello"));
@@ -214,7 +217,7 @@ macro_rules! or {
                 ///
                 /// ```
                 #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                /// use std::ops::DerefMut;
+                /// use core::ops::DerefMut;
                 #[doc = concat!("let mut or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
                 #[doc = concat!("let mut or_deref_mut: ", stringify!($module), "::Or<", type_list!(&mut str, $($t),*), "> = or.as_deref_mut();")]
                 #[doc = concat!("if let ", stringify!($module), "::Or::T0(s) = or_deref_mut { s.make_ascii_uppercase(); }")]
@@ -391,23 +394,6 @@ macro_rules! or {
                         $(Self::$t(item) => Or::$t(map(item)),)*
                     }
                 }
-
-                /// Maps an `Or<T, T...>` to an `Or<U, U...>` by applying a function with a state to the contained value.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
-                #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map_with(10, |(s, x)| s + x as u16);")]
-                /// assert_eq!(mapped.into_inner(), 52u16);
-                /// ```
-                #[inline]
-                pub fn map_with<S, U, F: FnOnce((S, T)) -> U>(self, state:S, map: F) -> Or<$($same_u,)*> {
-                    match self {
-                        $(Self::$t(item) => Or::$t(map((state, item))),)*
-                    }
-                }
             }
 
             impl<T, $($t: AsRef<T>),*> AsRef<T> for Or<$($t,)*> {
@@ -430,6 +416,15 @@ macro_rules! or {
                 fn as_mut(&mut self) -> &mut T {
                     match self {
                         $(Self::$t(item) => item.as_mut(),)*
+                    }
+                }
+            }
+
+            impl<$($t: fmt::Display,)*> fmt::Display for Or<$($t,)*> {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => fmt::Display::fmt(item, f),)*
                     }
                 }
             }
