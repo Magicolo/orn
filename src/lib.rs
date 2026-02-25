@@ -373,7 +373,6 @@ macro_rules! or {
                 /// tuple on success, or `Err` with the original array otherwise.
                 ///
                 /// Call [`Or::sort_by_variant`] first to handle out-of-order arrays.
-                #[must_use]
                 #[inline]
                 pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
                     #[allow(unreachable_patterns)]
