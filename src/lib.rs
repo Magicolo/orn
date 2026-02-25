@@ -3,7 +3,7 @@
 #![doc = include_str!("../README.md")]
 
 use core::{
-    fmt,
+    error, fmt,
     ops::{Deref, DerefMut},
 };
 
@@ -429,8 +429,8 @@ macro_rules! or {
                 }
             }
 
-            impl<$($t: core::error::Error,)*> core::error::Error for Or<$($t,)*> {
-                fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+            impl<$($t: error::Error,)*> error::Error for Or<$($t,)*> {
+                fn source(&self) -> Option<&(dyn error::Error + 'static)> {
                     match self {
                         $(Self::$t(item) => item.source(),)*
                     }
