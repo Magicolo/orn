@@ -23,7 +23,7 @@ serde = ["dep:serde"]
 rayon = ["dep:rayon"]
 
 [dependencies]
-pin-project-lite = { version = "0.2", optional = true }
+pin-project-lite = { version = "0.2", optional = true, default-features = false }
 serde = { version = "1.0", optional = true, default-features = false }
 rayon = { version = "1.11", optional = true, default-features = false }
 
