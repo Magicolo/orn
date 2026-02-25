@@ -529,6 +529,34 @@ macro_rules! or {
                             $(Self::$t(item) => item.size_hint(),)*
                         }
                     }
+
+                    #[inline]
+                    fn count(self) -> usize {
+                        match self {
+                            $(Self::$t(item) => item.count(),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+                        match self {
+                            $(Self::$t(item) => item.nth(n).map(Or::$t),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn fold<B, F: FnMut(B, Self::Item) -> B>(self, init: B, mut f: F) -> B {
+                        match self {
+                            $(Self::$t(item) => item.fold(init, |acc, x| f(acc, Or::$t(x))),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
+                        match self {
+                            $(Self::$t(item) => item.for_each(|x| f(Or::$t(x))),)*
+                        }
+                    }
                 }
 
                 impl<$($t: DoubleEndedIterator),*> DoubleEndedIterator for Iterator<$($t,)*> {
@@ -536,6 +564,20 @@ macro_rules! or {
                     fn next_back(&mut self) -> Option<Self::Item> {
                         match self {
                             $(Self::$t(item) => Some(Or::$t(item.next_back()?)),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+                        match self {
+                            $(Self::$t(item) => item.nth_back(n).map(Or::$t),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn rfold<B, F: FnMut(B, Self::Item) -> B>(self, init: B, mut f: F) -> B {
+                        match self {
+                            $(Self::$t(item) => item.rfold(init, |acc, x| f(acc, Or::$t(x))),)*
                         }
                     }
                 }
