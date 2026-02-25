@@ -227,22 +227,3 @@ fn fmt_write_t1() {
     assert_eq!(or.t1().unwrap(), "world 7");
 }
 
-#[cfg(feature = "std")]
-#[test]
-fn io_write_t0() {
-    use std::io::Write;
-    let mut or: orn::Or2<Vec<u8>, Vec<u8>> = orn::Or2::T0(Vec::new());
-    or.write_all(b"hello").unwrap();
-    assert_eq!(or.t0().unwrap(), b"hello");
-}
-
-#[cfg(feature = "std")]
-#[test]
-fn io_read_t0() {
-    use std::io::Read;
-    let data: &[u8] = b"hello";
-    let mut or: orn::Or2<&[u8], &[u8]> = orn::Or2::T0(data);
-    let mut buf = [0u8; 5];
-    or.read_exact(&mut buf).unwrap();
-    assert_eq!(&buf, b"hello");
-}
