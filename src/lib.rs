@@ -391,23 +391,6 @@ macro_rules! or {
                         $(Self::$t(item) => Or::$t(map(item)),)*
                     }
                 }
-
-                /// Maps an `Or<T, T...>` to an `Or<U, U...>` by applying a function with a state to the contained value.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
-                #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map_with(10, |(s, x)| s + x as u16);")]
-                /// assert_eq!(mapped.into_inner(), 52u16);
-                /// ```
-                #[inline]
-                pub fn map_with<S, U, F: FnOnce((S, T)) -> U>(self, state:S, map: F) -> Or<$($same_u,)*> {
-                    match self {
-                        $(Self::$t(item) => Or::$t(map((state, item))),)*
-                    }
-                }
             }
 
             impl<T, $($t: AsRef<T>),*> AsRef<T> for Or<$($t,)*> {
