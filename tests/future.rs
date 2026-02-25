@@ -12,6 +12,12 @@ fn compiles() {
     drop(async { future.await.into_inner() });
 }
 
+#[test]
+fn or0_into_future_compiles() {
+    fn assert_into_future<T: IntoFuture>() {}
+    assert_into_future::<orn::Or0>();
+}
+
 const fn or<T>(value: T) -> Or2<T, T> {
     Or2::T0(value)
 }

@@ -11,6 +11,12 @@ fn compiles() {
 }
 
 #[test]
+fn or0_into_iterator_compiles() {
+    fn assert_into_iter<T: IntoIterator>() {}
+    assert_into_iter::<orn::Or0>();
+}
+
+#[test]
 fn size_hint_exact_size() {
     let v = vec![1u8, 2u8, 3u8];
     let iter = Or2::<Vec<u8>, Vec<u8>>::T0(v).into_iter();

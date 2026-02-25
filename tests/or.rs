@@ -2,6 +2,26 @@ use orn::Or2;
 use std::borrow::Cow;
 
 #[test]
+fn or0_standard_trait_bounds_compile() {
+    fn assert_clone<T: Clone>() {}
+    fn assert_copy<T: Copy>() {}
+    fn assert_debug<T: std::fmt::Debug>() {}
+    fn assert_eq<T: Eq>() {}
+    fn assert_ord<T: Ord>() {}
+    fn assert_hash<T: std::hash::Hash>() {}
+    fn assert_is<T: orn::Is>() {}
+    fn assert_count<T: orn::Count>() {}
+    assert_clone::<orn::Or0>();
+    assert_copy::<orn::Or0>();
+    assert_debug::<orn::Or0>();
+    assert_eq::<orn::Or0>();
+    assert_ord::<orn::Or0>();
+    assert_hash::<orn::Or0>();
+    assert_is::<orn::Or0>();
+    assert_count::<orn::Or0>();
+}
+
+#[test]
 fn into_compiles() {
     let value = Or2::<&'static str, Cow<'static, str>>::T0("a").into::<String>();
     assert_eq!(value, "a".to_string());
