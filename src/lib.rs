@@ -237,17 +237,27 @@ macro_rules! or {
                     [$( Self::$t($get), )*]
                 }
 
-                /// Tries to convert an array `[Or<T0, T1, ..., TN>; N]` into a tuple `(T0, T1, ..., TN)`.
+                /// Sorts a slice of [`Or`] values in-place by variant index (`T0` first, then
+                /// `T1`, …, `TN` last).
                 ///
-                /// Elements in the array may appear in any order; there must be exactly one of
-                /// each variant. The array is sorted by variant index before conversion. Returns
-                /// `Ok` with the assembled tuple on success, or `Err` with the sorted array
-                /// if any variant is missing or appears more than once.
+                /// This is useful as a preprocessing step before calling [`Or::try_into_tuple`],
+                /// which requires elements to be in order.
                 #[inline]
-                pub fn try_into_tuple(mut array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
-                    array.sort_unstable_by_key(|item| match item {
+                pub fn sort_by_variant(slice: &mut [Self]) {
+                    slice.sort_unstable_by_key(|item| match item {
                         $(Self::$t(_) => $index,)*
                     });
+                }
+
+                /// Tries to convert an array `[Or<T0, T1, ..., TN>; N]` into a tuple `(T0, T1, ..., TN)`.
+                ///
+                /// Each element must contain the matching variant at its position: index `0` must
+                /// be `T0`, index `1` must be `T1`, and so on. Returns `Ok` with the assembled
+                /// tuple on success, or `Err` with the original array otherwise.
+                ///
+                /// Call [`Or::sort_by_variant`] first to handle out-of-order arrays.
+                #[inline]
+                pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
                     #[allow(unreachable_patterns)]
                     match array {
                         [$( Self::$t($get) ),*] => Ok(($($get,)*)),

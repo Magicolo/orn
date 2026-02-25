@@ -37,25 +37,43 @@ fn try_into_tuple_success_or3() {
 }
 
 #[test]
+fn sort_by_variant_or2() {
+    let mut array: [orn::Or2<u8, u16>; 2] = [orn::Or2::T1(100u16), orn::Or2::T0(42u8)];
+    orn::Or2::<u8, u16>::sort_by_variant(&mut array);
+    assert_eq!(array[0], orn::Or2::T0(42u8));
+    assert_eq!(array[1], orn::Or2::T1(100u16));
+}
+
+#[test]
+fn sort_by_variant_or3() {
+    let mut array: [orn::Or3<u8, u16, u32>; 3] =
+        [orn::Or3::T2(3u32), orn::Or3::T0(1u8), orn::Or3::T1(2u16)];
+    orn::Or3::<u8, u16, u32>::sort_by_variant(&mut array);
+    assert_eq!(array[0], orn::Or3::T0(1u8));
+    assert_eq!(array[1], orn::Or3::T1(2u16));
+    assert_eq!(array[2], orn::Or3::T2(3u32));
+}
+
+#[test]
 fn try_into_tuple_out_of_order_or2() {
-    // Reversed order: [T1, T0] should still produce (T0_val, T1_val)
-    let array: [orn::Or2<u8, u16>; 2] = [orn::Or2::T1(100u16), orn::Or2::T0(42u8)];
-    let tuple = orn::Or2::<u8, u16>::try_into_tuple(array);
-    assert_eq!(tuple, Ok((42u8, 100u16)));
+    // sort first, then convert
+    let mut array: [orn::Or2<u8, u16>; 2] = [orn::Or2::T1(100u16), orn::Or2::T0(42u8)];
+    orn::Or2::<u8, u16>::sort_by_variant(&mut array);
+    assert_eq!(orn::Or2::<u8, u16>::try_into_tuple(array), Ok((42u8, 100u16)));
 }
 
 #[test]
 fn try_into_tuple_out_of_order_or3() {
-    // Order: [T2, T0, T1] - all out of order
-    let array: [orn::Or3<u8, u16, u32>; 3] =
+    // sort first, then convert
+    let mut array: [orn::Or3<u8, u16, u32>; 3] =
         [orn::Or3::T2(3u32), orn::Or3::T0(1u8), orn::Or3::T1(2u16)];
-    let tuple = orn::Or3::<u8, u16, u32>::try_into_tuple(array);
-    assert_eq!(tuple, Ok((1u8, 2u16, 3u32)));
+    orn::Or3::<u8, u16, u32>::sort_by_variant(&mut array);
+    assert_eq!(orn::Or3::<u8, u16, u32>::try_into_tuple(array), Ok((1u8, 2u16, 3u32)));
 }
 
 #[test]
 fn try_into_tuple_failure_duplicate_or2() {
-    // Duplicate T1, missing T0 — must be Err (exact sorted contents not guaranteed for equal keys)
+    // Duplicate T1, missing T0 — must be Err
     let array: [orn::Or2<u8, u16>; 2] = [orn::Or2::T1(100u16), orn::Or2::T1(200u16)];
     assert!(orn::Or2::<u8, u16>::try_into_tuple(array).is_err());
 }
