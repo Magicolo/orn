@@ -666,6 +666,7 @@ macro_rules! or {
                 /// A parallel iterator that yields the items of an [`Or`] of parallel iterators.
                 #[derive(Clone, Copy, Debug)]
                 pub enum Iterator<$($t,)*> { $($t($t)),* }
+                #[doc(hidden)]
                 pub struct One<T, $($t: ?Sized,)* const N: usize>(pub T, $(PhantomData<$t>,)*);
 
                 impl<T, $($t: ?Sized,)* const N: usize> One<T, $($t,)* N> {
