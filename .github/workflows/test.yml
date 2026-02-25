@@ -12,7 +12,7 @@ jobs:
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - run: cargo hack nextest run --release --all-targets --verbose --feature-powerset
     - run: cargo hack test --doc --release --all-features --verbose
   clippy:
@@ -20,7 +20,7 @@ jobs:
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - run: cargo hack clippy --release --all-targets --verbose --feature-powerset -- --deny warnings
   doc:
     runs-on: ubuntu-latest
@@ -29,19 +29,19 @@ jobs:
     env:
       RUSTDOCFLAGS: --deny warnings
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - run: cargo doc --no-deps --release --verbose --all-features
   semver:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - run: cargo semver-checks --verbose
   audit:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/magicolo/rust
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - run: cargo audit --deny warnings
