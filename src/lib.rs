@@ -72,8 +72,15 @@ pub type Or0 = or0::Or;
 pub mod or0 {
     use super::*;
 
-    /// A union of 0 types. This type is uninhabited, meaning it cannot be
-    /// instantiated.
+    /// A union of 0 types.
+    ///
+    /// This type is **uninhabited**: it has no variants and cannot be instantiated.
+    /// It is analogous to Rust's [never type](https://doc.rust-lang.org/std/primitive.never.html)
+    /// `!` (currently unstable) and to the mathematical concept of the empty sum type.
+    ///
+    /// A function returning `Or0` can never return normally; a value of type `Or0`
+    /// can never exist at runtime.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum Or {}
 
     impl Count for () {
@@ -82,6 +89,96 @@ pub mod or0 {
 
     impl Count for Or {
         const COUNT: usize = 0;
+    }
+
+    impl Is for Or {
+        #[inline]
+        fn is(&self, _index: usize) -> bool {
+            match *self {}
+        }
+    }
+
+    #[cfg(feature = "iter")]
+    pub mod iter {
+        use super::Or;
+        use core::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator};
+
+        /// An iterator over an [`Or`] of iterators. Since [`Or`] is uninhabited,
+        /// this iterator always yields no items.
+        pub enum Iterator {}
+
+        impl IntoIterator for Or {
+            type Item = core::convert::Infallible;
+            type IntoIter = Iterator;
+
+            #[inline]
+            fn into_iter(self) -> Self::IntoIter {
+                match self {}
+            }
+        }
+
+        impl core::iter::Iterator for Iterator {
+            type Item = core::convert::Infallible;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                match *self {}
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                match *self {}
+            }
+        }
+
+        impl DoubleEndedIterator for Iterator {
+            #[inline]
+            fn next_back(&mut self) -> Option<Self::Item> {
+                match *self {}
+            }
+        }
+
+        impl ExactSizeIterator for Iterator {
+            #[inline]
+            fn len(&self) -> usize {
+                match *self {}
+            }
+        }
+
+        impl FusedIterator for Iterator {}
+    }
+
+    #[cfg(feature = "future")]
+    pub mod future {
+        use super::Or;
+        use core::{
+            future::IntoFuture,
+            pin::Pin,
+            task::{Context, Poll},
+        };
+
+        /// A future wrapping an [`Or`] of futures. Since [`Or`] is uninhabited,
+        /// this future can never be polled.
+        pub enum Future {}
+
+        impl IntoFuture for Or {
+            type Output = core::convert::Infallible;
+            type IntoFuture = Future;
+
+            #[inline]
+            fn into_future(self) -> Self::IntoFuture {
+                match self {}
+            }
+        }
+
+        impl core::future::Future for Future {
+            type Output = core::convert::Infallible;
+
+            #[inline]
+            fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+                unreachable!()
+            }
+        }
     }
 }
 
