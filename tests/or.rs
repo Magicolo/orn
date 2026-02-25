@@ -131,4 +131,30 @@ fn or1_into_syntax() {
     assert_eq!(or1, orn::Or1::T0(42u8));
     let back: u8 = or1.into();
     assert_eq!(back, 42u8);
+  
+fn or2_is_error() {
+    use std::error::Error;
+    use std::fmt;
+
+    #[derive(Debug)]
+    struct E1;
+    impl fmt::Display for E1 {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "E1")
+        }
+    }
+    impl Error for E1 {}
+
+    #[derive(Debug)]
+    struct E2;
+    impl fmt::Display for E2 {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "E2")
+        }
+    }
+    impl Error for E2 {}
+
+    let err: orn::Or2<E1, E2> = orn::Or2::T0(E1);
+    let _: &dyn Error = &err;
+    assert_eq!(format!("{}", err), "E1");
 }

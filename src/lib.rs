@@ -3,7 +3,7 @@
 #![doc = include_str!("../README.md")]
 
 use core::{
-    fmt,
+    error, fmt,
     ops::{Deref, DerefMut},
 };
 
@@ -429,6 +429,14 @@ macro_rules! or {
                 }
             }
 
+            impl<$($t: error::Error,)*> error::Error for Or<$($t,)*> {
+                fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+                    match self {
+                        $(Self::$t(item) => item.source(),)*
+                    }
+                }
+            }
+
             impl<$($t,)*> Count for ($($t,)*) {
                 const COUNT: usize = $count;
             }
@@ -658,6 +666,7 @@ macro_rules! or {
                 /// A parallel iterator that yields the items of an [`Or`] of parallel iterators.
                 #[derive(Clone, Copy, Debug)]
                 pub enum Iterator<$($t,)*> { $($t($t)),* }
+                #[doc(hidden)]
                 pub struct One<T, $($t: ?Sized,)* const N: usize>(pub T, $(PhantomData<$t>,)*);
 
                 impl<T, $($t: ?Sized,)* const N: usize> One<T, $($t,)* N> {
