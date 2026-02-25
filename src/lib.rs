@@ -2,7 +2,10 @@
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
-use core::ops::{Deref, DerefMut};
+use core::{
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 /// A trait for accessing a type at a specific index.
 ///
@@ -196,7 +199,7 @@ macro_rules! or {
                 ///
                 /// ```
                 #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                /// use std::ops::Deref;
+                /// use core::ops::Deref;
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
                 #[doc = concat!("let or_deref: ", stringify!($module), "::Or<", type_list!(&str, $($t),*), "> = or.as_deref();")]
                 /// assert_eq!(or_deref.t0(), Some("hello"));
@@ -214,7 +217,7 @@ macro_rules! or {
                 ///
                 /// ```
                 #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                /// use std::ops::DerefMut;
+                /// use core::ops::DerefMut;
                 #[doc = concat!("let mut or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
                 #[doc = concat!("let mut or_deref_mut: ", stringify!($module), "::Or<", type_list!(&mut str, $($t),*), "> = or.as_deref_mut();")]
                 #[doc = concat!("if let ", stringify!($module), "::Or::T0(s) = or_deref_mut { s.make_ascii_uppercase(); }")]
@@ -417,11 +420,11 @@ macro_rules! or {
                 }
             }
 
-            impl<$($t: core::fmt::Display,)*> core::fmt::Display for Or<$($t,)*> {
+            impl<$($t: fmt::Display,)*> fmt::Display for Or<$($t,)*> {
                 #[inline]
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     match self {
-                        $(Self::$t(item) => core::fmt::Display::fmt(item, f),)*
+                        $(Self::$t(item) => fmt::Display::fmt(item, f),)*
                     }
                 }
             }
