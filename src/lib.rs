@@ -1236,6 +1236,90 @@ macro_rules! or {
     };
 }
 
+/// Generates [`From`] and [`TryFrom`] impls between all prefix-pairs of `Or`
+/// types.
+///
+/// For each pair `(OrK, OrN)` where `K < N` and `OrK`'s type parameters are
+/// a prefix of `OrN`'s:
+/// - `From<OrK<T0..TK>>` is implemented for `OrN<T0..TN>` (widening).
+/// - `TryFrom<OrN<T0..TN>>` is implemented for `OrK<T0..TK>` with
+///   `Err = OrN<T0..TN>` (narrowing).
+macro_rules! or_conversions {
+    ([$($module:ident),* $(,)?] [$($t:ident),* $(,)?]) => {
+        or_conversions!(@step [] [$($module),*] [] [$($t),*]);
+    };
+    // No more destination modules — done.
+    (@step $srcs:tt [] $cur_types:tt $rem_types:tt) => {};
+    // Consume the next module (destination), build its type list, hand off to
+    // @with_dst to avoid mixing two independent repetitions in a single arm.
+    (@step
+        $srcs:tt
+        [$d_mod:ident $(, $rest_mod:ident)*]
+        [$($cur_t:ident),*]
+        [$next_t:ident $(, $more_t:ident)*]
+    ) => {
+        or_conversions!(@with_dst
+            $srcs
+            $d_mod
+            [$($cur_t,)* $next_t]
+            [$($rest_mod),*]
+            [$($more_t),*]
+        );
+    };
+    // Iterate over accumulated sources and emit one impl pair per source, then
+    // recurse to process the remaining destinations.
+    (@with_dst
+        [$($s_mod:ident $s_types:tt),*]
+        $d_mod:ident
+        $d_types:tt
+        $rest_dsts:tt
+        $rem_types:tt
+    ) => {
+        $(or_conversions!(@impl $s_mod $s_types $d_mod $d_types);)*
+        or_conversions!(@step
+            [$($s_mod $s_types,)* $d_mod $d_types]
+            $rest_dsts
+            $d_types
+            $rem_types
+        );
+    };
+    // Emit the From (widening) and TryFrom (narrowing) impl pair.
+    (@impl $s_mod:ident [$($s_t:ident),*] $d_mod:ident [$($d_t:ident),*]) => {
+        impl<$($d_t),*> From<$s_mod::Or<$($s_t,)*>> for $d_mod::Or<$($d_t,)*> {
+            /// Widens a smaller [`Or`](`$s_mod::Or`) into a larger one by
+            /// injecting into a superset sum type.
+            ///
+            /// Each variant maps to the same-named variant in the target.
+            #[inline]
+            fn from(value: $s_mod::Or<$($s_t,)*>) -> Self {
+                match value {
+                    $($s_mod::Or::$s_t(item) => $d_mod::Or::$s_t(item),)*
+                }
+            }
+        }
+
+        impl<$($d_t),*> TryFrom<$d_mod::Or<$($d_t,)*>> for $s_mod::Or<$($s_t,)*> {
+            /// The error type returned when the active variant is not in the
+            /// target subset — the original value is returned unchanged.
+            type Error = $d_mod::Or<$($d_t,)*>;
+
+            /// Attempts to narrow a larger [`Or`](`$d_mod::Or`) into a smaller
+            /// one.
+            ///
+            /// Returns `Ok` if the active variant is among the first `K`
+            /// variants, or `Err(self)` otherwise.
+            #[inline]
+            fn try_from(value: $d_mod::Or<$($d_t,)*>) -> Result<Self, Self::Error> {
+                match value {
+                    $($d_mod::Or::$s_t(item) => Ok($s_mod::Or::$s_t(item)),)*
+                    #[allow(unreachable_patterns)]
+                    other => Err(other),
+                }
+            }
+        }
+    };
+}
+
 #[cfg(all(not(feature = "or16"), not(feature = "or32")))]
 or!(
     [
@@ -1258,6 +1342,12 @@ or!(
         6, T6, U6, F6, t6, is_t6, map_t6,
         7, T7, U7, F7, t7, is_t7, map_t7,
     ]
+);
+
+#[cfg(all(not(feature = "or16"), not(feature = "or32")))]
+or_conversions!(
+    [or1, or2, or3, or4, or5, or6, or7, or8]
+    [T0, T1, T2, T3, T4, T5, T6, T7]
 );
 
 #[cfg(all(feature = "or16", not(feature = "or32")))]
@@ -1298,6 +1388,12 @@ or!(
         14, T14, U14, F14, t14, is_t14, map_t14,
         15, T15, U15, F15, t15, is_t15, map_t15,
     ]
+);
+
+#[cfg(all(feature = "or16", not(feature = "or32")))]
+or_conversions!(
+    [or1, or2, or3, or4, or5, or6, or7, or8, or9, or10, or11, or12, or13, or14, or15, or16]
+    [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]
 );
 
 #[cfg(feature = "or32")]
@@ -1369,5 +1465,21 @@ or!(
         29, T29, U29, F29, t29, is_t29, map_t29,
         30, T30, U30, F30, t30, is_t30, map_t30,
         31, T31, U31, F31, t31, is_t31, map_t31,
+    ]
+);
+
+#[cfg(feature = "or32")]
+or_conversions!(
+    [
+        or1, or2, or3, or4, or5, or6, or7, or8,
+        or9, or10, or11, or12, or13, or14, or15, or16,
+        or17, or18, or19, or20, or21, or22, or23, or24,
+        or25, or26, or27, or28, or29, or30, or31, or32,
+    ]
+    [
+        T0, T1, T2, T3, T4, T5, T6, T7,
+        T8, T9, T10, T11, T12, T13, T14, T15,
+        T16, T17, T18, T19, T20, T21, T22, T23,
+        T24, T25, T26, T27, T28, T29, T30, T31,
     ]
 );

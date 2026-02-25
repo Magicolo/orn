@@ -210,3 +210,106 @@ fn or2_is_error() {
     let _: &dyn Error = &err;
     assert_eq!(format!("{}", err), "E1");
 }
+
+#[test]
+fn from_or1_to_or2_t0() {
+    let value: orn::Or1<u8> = orn::Or1::T0(42u8);
+    let widened: orn::Or2<u8, u16> = orn::Or2::from(value);
+    assert_eq!(widened, orn::Or2::T0(42u8));
+}
+
+#[test]
+fn from_or2_to_or3_t0() {
+    let value: orn::Or2<u8, u16> = orn::Or2::T0(42u8);
+    let widened: orn::Or3<u8, u16, u32> = orn::Or3::from(value);
+    assert_eq!(widened, orn::Or3::T0(42u8));
+}
+
+#[test]
+fn from_or2_to_or3_t1() {
+    let value: orn::Or2<u8, u16> = orn::Or2::T1(100u16);
+    let widened: orn::Or3<u8, u16, u32> = orn::Or3::from(value);
+    assert_eq!(widened, orn::Or3::T1(100u16));
+}
+
+#[test]
+fn from_or1_to_or3_t0() {
+    // Or1 can widen all the way to Or3
+    let value: orn::Or1<u8> = orn::Or1::T0(7u8);
+    let widened: orn::Or3<u8, u16, u32> = orn::Or3::from(value);
+    assert_eq!(widened, orn::Or3::T0(7u8));
+}
+
+#[test]
+fn into_or2_to_or3() {
+    // From implies Into — verify the Into direction compiles and works
+    let value: orn::Or2<u8, u16> = orn::Or2::T1(55u16);
+    let widened = orn::Or3::<u8, u16, u32>::from(value);
+    assert_eq!(widened, orn::Or3::T1(55u16));
+}
+
+#[test]
+fn try_from_or2_to_or1_ok() {
+    use core::convert::TryFrom;
+    let value: orn::Or2<u8, u16> = orn::Or2::T0(42u8);
+    let narrowed = orn::Or1::<u8>::try_from(value);
+    assert_eq!(narrowed, Ok(orn::Or1::T0(42u8)));
+}
+
+#[test]
+fn try_from_or2_to_or1_err() {
+    use core::convert::TryFrom;
+    let value: orn::Or2<u8, u16> = orn::Or2::T1(100u16);
+    let narrowed = orn::Or1::<u8>::try_from(value);
+    assert_eq!(narrowed, Err(orn::Or2::T1(100u16)));
+}
+
+#[test]
+fn try_from_or3_to_or2_ok_t0() {
+    use core::convert::TryFrom;
+    let value: orn::Or3<u8, u16, u32> = orn::Or3::T0(1u8);
+    let narrowed = orn::Or2::<u8, u16>::try_from(value);
+    assert_eq!(narrowed, Ok(orn::Or2::T0(1u8)));
+}
+
+#[test]
+fn try_from_or3_to_or2_ok_t1() {
+    use core::convert::TryFrom;
+    let value: orn::Or3<u8, u16, u32> = orn::Or3::T1(2u16);
+    let narrowed = orn::Or2::<u8, u16>::try_from(value);
+    assert_eq!(narrowed, Ok(orn::Or2::T1(2u16)));
+}
+
+#[test]
+fn try_from_or3_to_or2_err() {
+    use core::convert::TryFrom;
+    let value: orn::Or3<u8, u16, u32> = orn::Or3::T2(99u32);
+    let narrowed = orn::Or2::<u8, u16>::try_from(value);
+    assert_eq!(narrowed, Err(orn::Or3::T2(99u32)));
+}
+
+#[test]
+fn try_from_or3_to_or1_ok() {
+    use core::convert::TryFrom;
+    let value: orn::Or3<u8, u16, u32> = orn::Or3::T0(5u8);
+    let narrowed = orn::Or1::<u8>::try_from(value);
+    assert_eq!(narrowed, Ok(orn::Or1::T0(5u8)));
+}
+
+#[test]
+fn try_from_or3_to_or1_err_t1() {
+    use core::convert::TryFrom;
+    let value: orn::Or3<u8, u16, u32> = orn::Or3::T1(10u16);
+    let narrowed = orn::Or1::<u8>::try_from(value);
+    assert_eq!(narrowed, Err(orn::Or3::T1(10u16)));
+}
+
+#[test]
+fn from_narrow_roundtrip() {
+    // Widen Or2 → Or3, then narrow back — round trips correctly
+    use core::convert::TryFrom;
+    let original: orn::Or2<u8, u16> = orn::Or2::T1(100u16);
+    let widened = orn::Or3::<u8, u16, u32>::from(original);
+    let narrowed = orn::Or2::<u8, u16>::try_from(widened);
+    assert_eq!(narrowed, Ok(original));
+}
