@@ -2,6 +2,9 @@
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "std")]
+extern crate std;
+
 use core::{
     error, fmt,
     ops::{Deref, DerefMut},
@@ -546,6 +549,56 @@ macro_rules! or {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     match self {
                         $(Self::$t(item) => fmt::Display::fmt(item, f),)*
+                    }
+                }
+            }
+
+            impl<$($t: fmt::Write,)*> fmt::Write for Or<$($t,)*> {
+                #[inline]
+                fn write_str(&mut self, s: &str) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => item.write_str(s),)*
+                    }
+                }
+
+                #[inline]
+                fn write_char(&mut self, c: char) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => item.write_char(c),)*
+                    }
+                }
+
+                #[inline]
+                fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => item.write_fmt(args),)*
+                    }
+                }
+            }
+
+            #[cfg(feature = "std")]
+            impl<$($t: std::io::Write,)*> std::io::Write for Or<$($t,)*> {
+                #[inline]
+                fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                    match self {
+                        $(Self::$t(item) => item.write(buf),)*
+                    }
+                }
+
+                #[inline]
+                fn flush(&mut self) -> std::io::Result<()> {
+                    match self {
+                        $(Self::$t(item) => item.flush(),)*
+                    }
+                }
+            }
+
+            #[cfg(feature = "std")]
+            impl<$($t: std::io::Read,)*> std::io::Read for Or<$($t,)*> {
+                #[inline]
+                fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                    match self {
+                        $(Self::$t(item) => item.read(buf),)*
                     }
                 }
             }
