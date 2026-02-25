@@ -2,6 +2,26 @@ use orn::Or2;
 use std::borrow::Cow;
 
 #[test]
+fn or0_standard_trait_bounds_compile() {
+    fn assert_clone<T: Clone>() {}
+    fn assert_copy<T: Copy>() {}
+    fn assert_debug<T: std::fmt::Debug>() {}
+    fn assert_eq<T: Eq>() {}
+    fn assert_ord<T: Ord>() {}
+    fn assert_hash<T: std::hash::Hash>() {}
+    fn assert_is<T: orn::Is>() {}
+    fn assert_count<T: orn::Count>() {}
+    assert_clone::<orn::Or0>();
+    assert_copy::<orn::Or0>();
+    assert_debug::<orn::Or0>();
+    assert_eq::<orn::Or0>();
+    assert_ord::<orn::Or0>();
+    assert_hash::<orn::Or0>();
+    assert_is::<orn::Or0>();
+    assert_count::<orn::Or0>();
+}
+
+#[test]
 fn into_compiles() {
     let value = Or2::<&'static str, Cow<'static, str>>::T0("a").into::<String>();
     assert_eq!(value, "a".to_string());
@@ -123,4 +143,70 @@ fn serde_untagged_roundtrip_or3() {
         let back: orn::Or3<u8, String, bool> = serde_json::from_str(json).unwrap();
         assert_eq!(back, val);
     }
+}
+
+#[test]
+fn display_t0() {
+    let or: orn::Or2<u8, u16> = orn::Or2::T0(42u8);
+    assert_eq!(format!("{}", or), "42");
+}
+
+#[test]
+fn display_t1() {
+    let or: orn::Or2<u8, u16> = orn::Or2::T1(100u16);
+    assert_eq!(format!("{}", or), "100");
+}
+
+#[test]
+fn display_str_variant() {
+    let or: orn::Or2<&str, u8> = orn::Or2::T0("hello");
+    assert_eq!(format!("{}", or), "hello");
+}
+
+#[test]
+fn or1_from_t0() {
+    let or1: orn::Or1<u8> = orn::Or1::from(42u8);
+    assert_eq!(or1, orn::Or1::T0(42u8));
+}
+
+#[test]
+fn or1_into_inner() {
+    let or1: orn::Or1<u8> = orn::Or1::T0(42u8);
+    let back: u8 = or1.into_inner();
+    assert_eq!(back, 42u8);
+}
+
+#[test]
+fn or1_into_syntax() {
+    let or1: orn::Or1<u8> = orn::Or1::from(42u8);
+    assert_eq!(or1, orn::Or1::T0(42u8));
+    let back: u8 = or1.into();
+    assert_eq!(back, 42u8);
+}
+  
+fn or2_is_error() {
+    use std::error::Error;
+    use std::fmt;
+
+    #[derive(Debug)]
+    struct E1;
+    impl fmt::Display for E1 {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "E1")
+        }
+    }
+    impl Error for E1 {}
+
+    #[derive(Debug)]
+    struct E2;
+    impl fmt::Display for E2 {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "E2")
+        }
+    }
+    impl Error for E2 {}
+
+    let err: orn::Or2<E1, E2> = orn::Or2::T0(E1);
+    let _: &dyn Error = &err;
+    assert_eq!(format!("{}", err), "E1");
 }

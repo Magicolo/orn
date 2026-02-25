@@ -2,7 +2,10 @@
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
-use core::ops::{Deref, DerefMut};
+use core::{
+    error, fmt,
+    ops::{Deref, DerefMut},
+};
 
 /// A trait for accessing a type at a specific index.
 ///
@@ -69,8 +72,16 @@ pub type Or0 = or0::Or;
 pub mod or0 {
     use super::*;
 
-    /// A union of 0 types. This type is uninhabited, meaning it cannot be
-    /// instantiated.
+    /// A union of 0 types.
+    ///
+    /// This type is **uninhabited**: it has no variants and cannot be
+    /// instantiated. It is analogous to Rust's [never type](https://doc.rust-lang.org/std/primitive.never.html)
+    /// `!` (currently unstable) and to the mathematical concept of the empty
+    /// sum type.
+    ///
+    /// A function returning `Or0` can never return normally; a value of type
+    /// `Or0` can never exist at runtime.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum Or {}
 
     impl Count for () {
@@ -79,6 +90,107 @@ pub mod or0 {
 
     impl Count for Or {
         const COUNT: usize = 0;
+    }
+
+    impl Is for Or {
+        #[inline]
+        fn is(&self, _index: usize) -> bool {
+            match *self {}
+        }
+    }
+
+    #[cfg(feature = "iter")]
+    pub mod iter {
+        use super::Or;
+        use core::{
+            convert::Infallible,
+            iter::{self, DoubleEndedIterator, ExactSizeIterator, FusedIterator},
+        };
+
+        /// An iterator over an [`Or`] of iterators. Since [`Or`] is
+        /// uninhabited, this iterator always yields no items.
+        pub enum Iterator {}
+
+        impl IntoIterator for Or {
+            type IntoIter = Iterator;
+            type Item = core::convert::Infallible;
+
+            #[inline]
+            fn into_iter(self) -> Self::IntoIter {
+                match self {}
+            }
+        }
+
+        impl iter::Iterator for Iterator {
+            type Item = Infallible;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                match *self {}
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                match *self {}
+            }
+        }
+
+        impl DoubleEndedIterator for Iterator {
+            #[inline]
+            fn next_back(&mut self) -> Option<Self::Item> {
+                match *self {}
+            }
+        }
+
+        impl ExactSizeIterator for Iterator {
+            #[inline]
+            fn len(&self) -> usize {
+                match *self {}
+            }
+        }
+
+        impl FusedIterator for Iterator {}
+    }
+
+    #[cfg(feature = "future")]
+    pub mod future {
+        use super::Or;
+        use core::{
+            convert::Infallible,
+            future::{self, IntoFuture},
+            pin::Pin,
+            task::{Context, Poll},
+        };
+
+        /// A future wrapping an [`Or`] of futures. Since [`Or`] is uninhabited,
+        /// this future can never be polled.
+        pub enum Future {}
+
+        impl IntoFuture for Or {
+            type IntoFuture = Future;
+            type Output = Infallible;
+
+            #[inline]
+            fn into_future(self) -> Self::IntoFuture {
+                match self {}
+            }
+        }
+
+        impl future::Future for Future {
+            type Output = Infallible;
+
+            #[inline]
+            fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+                unreachable!()
+            }
+        }
+    }
+}
+
+impl<T0> From<T0> for or1::Or<T0> {
+    #[inline]
+    fn from(value: T0) -> Self {
+        Self::T0(value)
     }
 }
 
@@ -146,6 +258,7 @@ macro_rules! or {
                 /// let value: u16 = or.into();
                 /// assert_eq!(value, 42u16);
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn into<T>(self) -> T where $($t: Into<T>),* {
                     match self {
@@ -163,6 +276,7 @@ macro_rules! or {
                 #[doc = concat!("let or_ref: ", stringify!($module), "::Or<", type_list!(&u8, $($t),*), "> = or.as_ref();")]
                 /// assert!(or_ref.is_t0());
                 /// ```
+                #[must_use]
                 #[inline]
                 pub const fn as_ref(&self) -> Or<$(&$t,)*> {
                     match self {
@@ -181,6 +295,7 @@ macro_rules! or {
                 /// *or_mut.t0().unwrap() = 100;
                 /// assert_eq!(or.t0(), Some(100));
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn as_mut(&mut self) -> Or<$(&mut $t,)*> {
                     match self {
@@ -195,11 +310,12 @@ macro_rules! or {
                 ///
                 /// ```
                 #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                /// use std::ops::Deref;
+                /// use core::ops::Deref;
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
                 #[doc = concat!("let or_deref: ", stringify!($module), "::Or<", type_list!(&str, $($t),*), "> = or.as_deref();")]
                 /// assert_eq!(or_deref.t0(), Some("hello"));
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn as_deref(&self) -> Or<$(&$t::Target,)*> where $($t: Deref),* {
                     match self {
@@ -213,12 +329,13 @@ macro_rules! or {
                 ///
                 /// ```
                 #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                /// use std::ops::DerefMut;
+                /// use core::ops::DerefMut;
                 #[doc = concat!("let mut or: ", stringify!($alias), "<", type_list!(String, $($t),*), "> = ", stringify!($module), "::Or::T0(\"hello\".to_string());")]
                 #[doc = concat!("let mut or_deref_mut: ", stringify!($module), "::Or<", type_list!(&mut str, $($t),*), "> = or.as_deref_mut();")]
                 #[doc = concat!("if let ", stringify!($module), "::Or::T0(s) = or_deref_mut { s.make_ascii_uppercase(); }")]
                 /// assert_eq!(or.t0(), Some("HELLO".to_string()));
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn as_deref_mut(&mut self) -> Or<$(&mut $t::Target,)*> where $($t: DerefMut),* {
                     match self {
@@ -230,6 +347,7 @@ macro_rules! or {
                 ///
                 /// Each element in the resulting array contains the corresponding tuple element
                 /// wrapped in the matching [`Or`] variant.
+                #[must_use]
                 #[inline]
                 pub fn from_tuple(tuple: ($($t,)*)) -> [Self; $count] {
                     let ($($get,)*) = tuple;
@@ -255,6 +373,7 @@ macro_rules! or {
                 /// tuple on success, or `Err` with the original array otherwise.
                 ///
                 /// Call [`Or::sort_by_variant`] first to handle out-of-order arrays.
+                #[must_use]
                 #[inline]
                 pub fn try_into_tuple(array: [Self; $count]) -> Result<($($t,)*), [Self; $count]> {
                     #[allow(unreachable_patterns)]
@@ -284,6 +403,7 @@ macro_rules! or {
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(&NonClone, $($t),*), "> = ", stringify!($module), "::Or::T0(&NonClone);")]
                 /// or.cloned();
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
                     match self {
@@ -309,6 +429,7 @@ macro_rules! or {
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(&NonCopy, $($t),*), "> = ", stringify!($module), "::Or::T0(&NonCopy);")]
                 /// or.copied();
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
                     match self {
@@ -329,6 +450,7 @@ macro_rules! or {
                 #[doc = concat!("let cloned: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_mut_ref.cloned();")]
                 #[doc = concat!("assert_eq!(cloned, ", stringify!($module), "::Or::T0(12));")]
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn cloned(self) -> Or<$($t,)*> where $($t: Clone),* {
                     match self {
@@ -347,6 +469,7 @@ macro_rules! or {
                 #[doc = concat!("let copied: ", stringify!($alias), "<", type_list!(i32, $($t),*), "> = or_mut_ref.copied();")]
                 #[doc = concat!("assert_eq!(copied, ", stringify!($module), "::Or::T0(12));")]
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn copied(self) -> Or<$($t,)*> where $($t: Copy),* {
                     match self {
@@ -367,6 +490,7 @@ macro_rules! or {
                 #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
                 /// assert_eq!(or.into_inner(), 42);
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn into_inner(self) -> T {
                     match self {
@@ -384,27 +508,11 @@ macro_rules! or {
                 #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map(|x| x as u16);")]
                 /// assert_eq!(mapped.into_inner(), 42u16);
                 /// ```
+                #[must_use]
                 #[inline]
                 pub fn map<U, F: FnOnce(T) -> U>(self, map: F) -> Or<$($same_u,)*> {
                     match self {
                         $(Self::$t(item) => Or::$t(map(item)),)*
-                    }
-                }
-
-                /// Maps an `Or<T, T...>` to an `Or<U, U...>` by applying a function with a state to the contained value.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("use orn::{", stringify!($module), ", ", stringify!($alias), "};")]
-                #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($t),*), "> = ", stringify!($module), "::Or::T0(42);")]
-                #[doc = concat!("let mapped: ", stringify!($alias), "<", type_list!(u16, $($t),*), "> = or.map_with(10, |(s, x)| s + x as u16);")]
-                /// assert_eq!(mapped.into_inner(), 52u16);
-                /// ```
-                #[inline]
-                pub fn map_with<S, U, F: FnOnce((S, T)) -> U>(self, state:S, map: F) -> Or<$($same_u,)*> {
-                    match self {
-                        $(Self::$t(item) => Or::$t(map((state, item))),)*
                     }
                 }
             }
@@ -429,6 +537,23 @@ macro_rules! or {
                 fn as_mut(&mut self) -> &mut T {
                     match self {
                         $(Self::$t(item) => item.as_mut(),)*
+                    }
+                }
+            }
+
+            impl<$($t: fmt::Display,)*> fmt::Display for Or<$($t,)*> {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    match self {
+                        $(Self::$t(item) => fmt::Display::fmt(item, f),)*
+                    }
+                }
+            }
+
+            impl<$($t: error::Error,)*> error::Error for Or<$($t,)*> {
+                fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+                    match self {
+                        $(Self::$t(item) => item.source(),)*
                     }
                 }
             }
@@ -533,6 +658,34 @@ macro_rules! or {
                             $(Self::$t(item) => item.size_hint(),)*
                         }
                     }
+
+                    #[inline]
+                    fn count(self) -> usize {
+                        match self {
+                            $(Self::$t(item) => item.count(),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+                        match self {
+                            $(Self::$t(item) => item.nth(n).map(Or::$t),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn fold<B, F: FnMut(B, Self::Item) -> B>(self, init: B, mut f: F) -> B {
+                        match self {
+                            $(Self::$t(item) => item.fold(init, |acc, x| f(acc, Or::$t(x))),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
+                        match self {
+                            $(Self::$t(item) => item.for_each(|x| f(Or::$t(x))),)*
+                        }
+                    }
                 }
 
                 impl<$($t: DoubleEndedIterator),*> DoubleEndedIterator for Iterator<$($t,)*> {
@@ -540,6 +693,20 @@ macro_rules! or {
                     fn next_back(&mut self) -> Option<Self::Item> {
                         match self {
                             $(Self::$t(item) => Some(Or::$t(item.next_back()?)),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+                        match self {
+                            $(Self::$t(item) => item.nth_back(n).map(Or::$t),)*
+                        }
+                    }
+
+                    #[inline]
+                    fn rfold<B, F: FnMut(B, Self::Item) -> B>(self, init: B, mut f: F) -> B {
+                        match self {
+                            $(Self::$t(item) => item.rfold(init, |acc, x| f(acc, Or::$t(x))),)*
                         }
                     }
                 }
@@ -620,6 +787,7 @@ macro_rules! or {
                 /// A parallel iterator that yields the items of an [`Or`] of parallel iterators.
                 #[derive(Clone, Copy, Debug)]
                 pub enum Iterator<$($t,)*> { $($t($t)),* }
+                #[doc(hidden)]
                 pub struct One<T, $($t: ?Sized,)* const N: usize>(pub T, $(PhantomData<$t>,)*);
 
                 impl<T, $($t: ?Sized,)* const N: usize> One<T, $($t,)* N> {
@@ -881,6 +1049,7 @@ macro_rules! or {
             #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = Or::", stringify!($t), "(42);")]
             #[doc = concat!("assert_eq!(or.", stringify!($get), "(), Some(42));")]
             /// ```
+            #[must_use]
             #[inline]
             pub fn $get(self) -> Option<$t> {
                 match self {
@@ -899,6 +1068,7 @@ macro_rules! or {
             #[doc = concat!("let or: ", stringify!($alias), "<", type_list!(u8, $($ts),*), "> = ", stringify!($module), "::Or::", stringify!($t), "(42);")]
             #[doc = concat!("assert!(or.", stringify!($is), "());")]
             /// ```
+            #[must_use]
             #[inline]
             pub fn $is(&self) -> bool {
                 match self {
@@ -918,6 +1088,7 @@ macro_rules! or {
             #[doc = concat!("let mapped = or.", stringify!($map), "(|x| x.to_string());")]
             #[doc = concat!("assert_eq!(mapped.", stringify!($get), "(), Some(\"42\".to_string()));")]
             /// ```
+            #[must_use]
             #[inline]
             pub fn $map<U, F: FnOnce($t) -> U>(self, map: F) -> Or<$($map_t,)*> {
                 match self {
