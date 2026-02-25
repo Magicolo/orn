@@ -79,7 +79,10 @@ fn try_into_tuple_out_of_order_or2() {
     // sort first, then convert
     let mut array: [orn::Or2<u8, u16>; 2] = [orn::Or2::T1(100u16), orn::Or2::T0(42u8)];
     orn::Or2::<u8, u16>::sort_by_variant(&mut array);
-    assert_eq!(orn::Or2::<u8, u16>::try_into_tuple(array), Ok((42u8, 100u16)));
+    assert_eq!(
+        orn::Or2::<u8, u16>::try_into_tuple(array),
+        Ok((42u8, 100u16))
+    );
 }
 
 #[test]
@@ -88,7 +91,10 @@ fn try_into_tuple_out_of_order_or3() {
     let mut array: [orn::Or3<u8, u16, u32>; 3] =
         [orn::Or3::T2(3u32), orn::Or3::T0(1u8), orn::Or3::T1(2u16)];
     orn::Or3::<u8, u16, u32>::sort_by_variant(&mut array);
-    assert_eq!(orn::Or3::<u8, u16, u32>::try_into_tuple(array), Ok((1u8, 2u16, 3u32)));
+    assert_eq!(
+        orn::Or3::<u8, u16, u32>::try_into_tuple(array),
+        Ok((1u8, 2u16, 3u32))
+    );
 }
 
 #[test]
@@ -183,10 +189,10 @@ fn or1_into_syntax() {
     let back: u8 = or1.into();
     assert_eq!(back, 42u8);
 }
-  
+
+#[test]
 fn or2_is_error() {
-    use std::error::Error;
-    use std::fmt;
+    use std::{error::Error, fmt};
 
     #[derive(Debug)]
     struct E1;
@@ -226,4 +232,3 @@ fn fmt_write_t1() {
     write!(or, "world {}", 7).unwrap();
     assert_eq!(or.t1().unwrap(), "world 7");
 }
-
