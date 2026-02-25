@@ -111,3 +111,24 @@ fn display_str_variant() {
     let or: orn::Or2<&str, u8> = orn::Or2::T0("hello");
     assert_eq!(format!("{}", or), "hello");
 }
+
+#[test]
+fn or1_from_t0() {
+    let or1: orn::Or1<u8> = orn::Or1::from(42u8);
+    assert_eq!(or1, orn::Or1::T0(42u8));
+}
+
+#[test]
+fn or1_into_inner() {
+    let or1: orn::Or1<u8> = orn::Or1::T0(42u8);
+    let back: u8 = or1.into_inner();
+    assert_eq!(back, 42u8);
+}
+
+#[test]
+fn or1_into_syntax() {
+    let or1: orn::Or1<u8> = orn::Or1::from(42u8);
+    assert_eq!(or1, orn::Or1::T0(42u8));
+    let back: u8 = or1.into();
+    assert_eq!(back, 42u8);
+}
