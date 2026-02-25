@@ -227,6 +227,26 @@ macro_rules! or {
 
                     }
                 }
+
+                /// Converts a tuple `(T0, T1, ..., TN)` into an array `[Or<T0, T1, ..., TN>; N]`.
+                ///
+                /// Each element in the resulting array contains the corresponding tuple element
+                /// wrapped in the matching [`Or`] variant.
+                #[inline]
+                pub fn from_tuple(tuple: ($($t,)*)) -> [Self; $count] {
+                    let ($($get,)*) = tuple;
+                    [$( Self::$t($get), )*]
+                }
+
+                /// Tries to convert an array `[Or<T0, T1, ..., TN>; N]` into a tuple `(T0, T1, ..., TN)`.
+                ///
+                /// Returns `Some` if each element in the array contains the matching variant,
+                /// or `None` if any element does not match the expected variant.
+                #[inline]
+                pub fn try_into_tuple(array: [Self; $count]) -> Option<($($t,)*)> {
+                    let [$($get,)*] = array;
+                    Some(($( $get.$get()?, )*))
+                }
             }
 
             impl<$($t,)*> Or<$(&$t,)*> {
