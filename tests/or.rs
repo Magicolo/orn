@@ -93,3 +93,33 @@ fn from_tuple_try_into_tuple_roundtrip() {
     let result = orn::Or3::<u8, u16, u32>::try_into_tuple(array);
     assert_eq!(result, Ok(original));
 }
+
+#[test]
+fn into_or_t0() {
+    use orn::IntoOr;
+    let or: orn::Or2<u8, u16> = 42u8.into_or();
+    assert_eq!(or, orn::Or2::T0(42u8));
+}
+
+#[test]
+fn into_or_t1() {
+    use orn::IntoOr;
+    let or: orn::Or2<u8, u16> = 100u16.into_or();
+    assert_eq!(or, orn::Or2::T1(100u16));
+}
+
+#[test]
+fn try_from_or_ok() {
+    use orn::TryFromOr;
+    let or: orn::Or2<u8, u16> = orn::Or2::T0(42u8);
+    assert_eq!(u8::try_from_or(or), Ok(42u8));
+}
+
+#[test]
+fn try_from_or_err() {
+    use orn::TryFromOr;
+    let or: orn::Or2<u8, u16> = orn::Or2::T1(100u16);
+    let result: Result<u8, _> = u8::try_from_or(or);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), orn::Or2::T1(100u16));
+}

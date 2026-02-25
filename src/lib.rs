@@ -4,6 +4,56 @@
 
 use core::ops::{Deref, DerefMut};
 
+/// Trait for converting a variant value into an [`Or`] type at a specific position.
+///
+/// The const parameter `N` identifies the variant position, which avoids the
+/// ambiguity that would arise from implementing the standard [`From`] trait when
+/// multiple variant types are identical (e.g. `Or2<u8, u8>`).
+///
+/// # Examples
+///
+/// ```
+/// use orn::{IntoOr, Or2};
+///
+/// let or: Or2<u8, u16> = 42u8.into_or();
+/// assert_eq!(or, Or2::T0(42u8));
+///
+/// let or: Or2<u8, u16> = 100u16.into_or();
+/// assert_eq!(or, Or2::T1(100u16));
+/// ```
+pub trait IntoOr<O, const N: usize>: Sized {
+    /// Converts `self` into the `Or` type, placing the value at variant position `N`.
+    fn into_or(self) -> O;
+}
+
+/// Trait for fallibly extracting a specific variant from an [`Or`] type.
+///
+/// The const parameter `N` identifies the variant position to extract. On failure
+/// the original `Or` value is returned so the caller can inspect which variant
+/// was actually present.
+///
+/// This plays the same role as the standard [`TryFrom`] trait, but avoids the
+/// orphan-rule and overlapping-impl restrictions that prevent implementing
+/// `TryFrom<Or<T0, T1, ..., TN>>` for a bare type parameter.
+///
+/// # Examples
+///
+/// ```
+/// use orn::{TryFromOr, Or2};
+///
+/// let or: Or2<u8, u16> = Or2::T0(42u8);
+/// assert_eq!(u8::try_from_or(or), Ok(42u8));
+///
+/// let or: Or2<u8, u16> = Or2::T1(100u16);
+/// assert!(u8::try_from_or(or).is_err());
+/// ```
+pub trait TryFromOr<O, const N: usize>: Sized {
+    /// The value returned when the `Or` does not hold variant `N`.
+    type Error;
+    /// Attempts to extract variant `N` from `value`.
+    fn try_from_or(value: O) -> Result<Self, Self::Error>;
+}
+
 /// A trait for accessing a type at a specific index.
 ///
 /// This trait is implemented for `Or` types and tuples, allowing generic
@@ -867,6 +917,26 @@ macro_rules! or {
                     Or::$t(item) => Some(item),
                     #[allow(unreachable_patterns)]
                     _ => None,
+                }
+            }
+        }
+
+        impl<$($ts),*> IntoOr<Or<$($ts,)*>, $index> for $t {
+            #[inline]
+            fn into_or(self) -> Or<$($ts,)*> {
+                Or::$t(self)
+            }
+        }
+
+        impl<$($ts),*> TryFromOr<Or<$($ts,)*>, $index> for $t {
+            type Error = Or<$($ts,)*>;
+
+            #[inline]
+            fn try_from_or(value: Or<$($ts,)*>) -> Result<Self, Self::Error> {
+                match value {
+                    Or::$t(item) => Ok(item),
+                    #[allow(unreachable_patterns)]
+                    other => Err(other),
                 }
             }
         }
