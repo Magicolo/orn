@@ -224,7 +224,6 @@ macro_rules! or {
                 pub fn as_deref_mut(&mut self) -> Or<$(&mut $t::Target,)*> where $($t: DerefMut),* {
                     match self {
                         $(Self::$t(item) => Or::$t(item.deref_mut()),)*
-
                     }
                 }
 
