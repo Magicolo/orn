@@ -8,6 +8,87 @@ fn into_compiles() {
 }
 
 #[test]
+fn widen_or1_to_or2_t0() {
+    use orn::{Or1, Or2, Widen};
+    let v: Or1<u8> = Or1::T0(42u8);
+    let w: Or2<u8, u16> = v.widen();
+    assert_eq!(w, Or2::T0(42u8));
+}
+
+#[test]
+fn widen_or2_to_or3_t0() {
+    use orn::{Or2, Or3, Widen};
+    let v: Or2<u8, u16> = Or2::T0(1u8);
+    let w: Or3<u8, u16, u32> = v.widen();
+    assert_eq!(w, Or3::T0(1u8));
+}
+
+#[test]
+fn widen_or2_to_or3_t1() {
+    use orn::{Or2, Or3, Widen};
+    let v: Or2<u8, u16> = Or2::T1(7u16);
+    let w: Or3<u8, u16, u32> = v.widen();
+    assert_eq!(w, Or3::T1(7u16));
+}
+
+#[test]
+fn widen_or1_to_or3() {
+    use orn::{Or1, Or3, Widen};
+    let v: Or1<u8> = Or1::T0(99u8);
+    let w: Or3<u8, u16, u32> = v.widen();
+    assert_eq!(w, Or3::T0(99u8));
+}
+
+#[test]
+fn narrow_or3_to_or2_ok_t0() {
+    use orn::{Or2, Or3, Narrow};
+    let v: Or3<u8, u16, u32> = Or3::T0(42u8);
+    let n: Result<Or2<u8, u16>, Or3<u8, u16, u32>> = v.narrow();
+    assert_eq!(n, Ok(Or2::T0(42u8)));
+}
+
+#[test]
+fn narrow_or3_to_or2_ok_t1() {
+    use orn::{Or2, Or3, Narrow};
+    let v: Or3<u8, u16, u32> = Or3::T1(7u16);
+    let n: Result<Or2<u8, u16>, Or3<u8, u16, u32>> = v.narrow();
+    assert_eq!(n, Ok(Or2::T1(7u16)));
+}
+
+#[test]
+fn narrow_or3_to_or2_err() {
+    use orn::{Or2, Or3, Narrow};
+    let v: Or3<u8, u16, u32> = Or3::T2(99u32);
+    let n: Result<Or2<u8, u16>, Or3<u8, u16, u32>> = v.narrow();
+    assert_eq!(n, Err(Or3::T2(99u32)));
+}
+
+#[test]
+fn narrow_or3_to_or1_ok() {
+    use orn::{Or1, Or3, Narrow};
+    let v: Or3<u8, u16, u32> = Or3::T0(5u8);
+    let n: Result<Or1<u8>, Or3<u8, u16, u32>> = v.narrow();
+    assert_eq!(n, Ok(Or1::T0(5u8)));
+}
+
+#[test]
+fn narrow_or3_to_or1_err_t1() {
+    use orn::{Or1, Or3, Narrow};
+    let v: Or3<u8, u16, u32> = Or3::T1(3u16);
+    let n: Result<Or1<u8>, Or3<u8, u16, u32>> = v.narrow();
+    assert_eq!(n, Err(Or3::T1(3u16)));
+}
+
+#[test]
+fn widen_narrow_roundtrip() {
+    use orn::{Or2, Or3, Narrow, Widen};
+    let original: Or2<u8, u16> = Or2::T1(10u16);
+    let widened: Or3<u8, u16, u32> = original.widen();
+    let narrowed: Result<Or2<u8, u16>, Or3<u8, u16, u32>> = widened.narrow();
+    assert_eq!(narrowed, Ok(original));
+}
+
+#[test]
 fn from_tuple_or2() {
     let array = orn::Or2::<u8, u16>::from_tuple((42u8, 100u16));
     assert_eq!(array[0], orn::Or2::T0(42u8));

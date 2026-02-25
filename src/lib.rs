@@ -56,6 +56,55 @@ pub trait Count {
     const COUNT: usize;
 }
 
+/// A trait for widening an `Or` type by injecting it into a larger sum type.
+///
+/// Converts an `OrN<T0, …, T(N-1)>` into an `OrM<T0, …, T(N-1), U0, …, U(M-N-1)>` where the
+/// first `N` variants are mapped to their matching positions in the target type.
+///
+/// # Examples
+///
+/// ```
+/// use orn::{Or2, Or3, Widen};
+///
+/// let v: Or2<u8, u16> = Or2::T0(42u8);
+/// let w: Or3<u8, u16, u32> = v.widen();
+/// assert_eq!(w, Or3::T0(42u8));
+///
+/// let v: Or2<u8, u16> = Or2::T1(7u16);
+/// let w: Or3<u8, u16, u32> = v.widen();
+/// assert_eq!(w, Or3::T1(7u16));
+/// ```
+pub trait Widen<Target> {
+    /// Widens `self` into the `Target` sum type.
+    fn widen(self) -> Target;
+}
+
+/// A trait for narrowing an `Or` type by projecting it onto a smaller sum type.
+///
+/// Attempts to convert an `OrM<T0, …, T(M-1)>` into an `OrN<T0, …, T(N-1)>` where `N < M`.
+/// Returns `Ok` if the active variant falls within the first `N` types, otherwise returns
+/// `Err(self)`.
+///
+/// # Examples
+///
+/// ```
+/// use orn::{Or2, Or3, Narrow};
+///
+/// let v: Or3<u8, u16, u32> = Or3::T0(42u8);
+/// let n: Result<Or2<u8, u16>, Or3<u8, u16, u32>> = v.narrow();
+/// assert_eq!(n, Ok(Or2::T0(42u8)));
+///
+/// let v: Or3<u8, u16, u32> = Or3::T2(99u32);
+/// let n: Result<Or2<u8, u16>, Or3<u8, u16, u32>> = v.narrow();
+/// assert!(n.is_err());
+/// ```
+pub trait Narrow<Subset>: Sized {
+    /// Tries to narrow `self` into the `Subset` sum type.
+    ///
+    /// Returns `Ok(subset)` if the active variant is within `Subset`, or `Err(self)` otherwise.
+    fn narrow(self) -> Result<Subset, Self>;
+}
+
 #[inline]
 fn same<T, F>(item: T, _: F) -> T {
     item
@@ -1137,4 +1186,114 @@ or!(
         30, T30, U30, F30, t30, is_t30, map_t30,
         31, T31, U31, F31, t31, is_t31, map_t31,
     ]
+);
+
+/// Generates a single `Widen` + `Narrow` impl pair for two `Or` module types.
+///
+/// `$t` = shared prefix type-param/variant names (in the small type)
+/// `$u` = extra type-param names present only in the large type
+macro_rules! impl_widen_narrow {
+    (
+        small: $small_module:ident [$($t:ident),*]
+        large: $large_module:ident
+        extra: [$($u:ident),*]
+    ) => {
+        impl<$($t,)* $($u,)*> Widen<$large_module::Or<$($t,)* $($u,)*>>
+            for $small_module::Or<$($t,)*>
+        {
+            #[inline]
+            fn widen(self) -> $large_module::Or<$($t,)* $($u,)*> {
+                match self {
+                    $($small_module::Or::$t(x) => $large_module::Or::$t(x),)*
+                }
+            }
+        }
+
+        impl<$($t,)* $($u,)*> Narrow<$small_module::Or<$($t,)*>>
+            for $large_module::Or<$($t,)* $($u,)*>
+        {
+            #[inline]
+            fn narrow(self) -> Result<$small_module::Or<$($t,)*>, Self> {
+                match self {
+                    $($large_module::Or::$t(x) => Ok($small_module::Or::$t(x)),)*
+                    other => Err(other),
+                }
+            }
+        }
+    };
+}
+
+/// Generates all `Widen` + `Narrow` impl pairs for an ordered list of `Or` modules.
+///
+/// For each pair `(OrN, OrM)` with `N < M`, generates:
+/// - `Widen<OrM<T0…T(M-1)>> for OrN<T0…T(N-1)>`
+/// - `Narrow<OrN<T0…T(N-1)>> for OrM<T0…T(M-1)>`
+macro_rules! or_widen_narrow {
+    ([$($module:ident),+] [$($t:ident),+]) => {
+        or_widen_narrow!(@each_small [$($module),+] [$($t),+] []);
+    };
+    // Base: no more small types to process.
+    (@each_small [] $vars:tt $acc:tt) => {};
+    // Process $small as the "small" Or type, pairing it with every following module.
+    (@each_small
+        [$small:ident $(, $rest_module:ident)*]
+        [$t:ident $(, $rest_t:ident)*]
+        [$($small_t:ident),*]
+    ) => {
+        or_widen_narrow!(@pairs_for_small
+            $small
+            [$($small_t,)* $t]
+            [$($rest_module),*]
+            []
+            [$($rest_t),*]
+        );
+        or_widen_narrow!(@each_small
+            [$($rest_module),*]
+            [$($rest_t),*]
+            [$($small_t,)* $t]
+        );
+    };
+    // Base: no more large types for this small type.
+    (@pairs_for_small $small:ident $small_vars:tt [] $extra:tt $remaining:tt) => {};
+    // Generate one impl pair and recurse to the next large type.
+    (@pairs_for_small
+        $small:ident
+        [$($t:ident),*]
+        [$large:ident $(, $rest_large:ident)*]
+        [$($u:ident),*]
+        [$new_u:ident $(, $rest_u:ident)*]
+    ) => {
+        impl_widen_narrow!(
+            small: $small [$($t),*]
+            large: $large
+            extra: [$($u,)* $new_u]
+        );
+        or_widen_narrow!(@pairs_for_small
+            $small
+            [$($t),*]
+            [$($rest_large),*]
+            [$($u,)* $new_u]
+            [$($rest_u),*]
+        );
+    };
+}
+
+#[cfg(all(not(feature = "or16"), not(feature = "or32")))]
+or_widen_narrow!(
+    [or1, or2, or3, or4, or5, or6, or7, or8]
+    [T0, T1, T2, T3, T4, T5, T6, T7]
+);
+
+#[cfg(all(feature = "or16", not(feature = "or32")))]
+or_widen_narrow!(
+    [or1, or2, or3, or4, or5, or6, or7, or8, or9, or10, or11, or12, or13, or14, or15, or16]
+    [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]
+);
+
+#[cfg(feature = "or32")]
+or_widen_narrow!(
+    [or1, or2, or3, or4, or5, or6, or7, or8, or9, or10, or11, or12, or13, or14, or15, or16,
+     or17, or18, or19, or20, or21, or22, or23, or24, or25, or26, or27, or28, or29, or30, or31, or32]
+    [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15,
+     T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, T28, T29, T30, T31]
 );

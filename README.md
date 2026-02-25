@@ -16,6 +16,7 @@ A generic implementation of a sum type (or discriminated union). It provides `en
 ### Features
 - has `#![no_std]` and `#![forbid(unsafe_code)]`
 - supports the applicable core traits
+- supports `Widen` (inject into a larger `Or`) and `Narrow` (project onto a smaller `Or`)
 - `features = ["iter"]` *(default)*: supports the `Into/Iterator` traits 
 - `features = ["future"]` *(default)*: supports the `Into/Future` traits 
 - `features = ["serde"]`: supports the `Serialize` and `Deserialize` traits
@@ -81,5 +82,48 @@ pub fn unify_divergent_parallel_iterators(
 }
 
 fn main() {}
+
+```
+
+---
+### Widen and Narrow
+
+`Widen` injects a smaller `Or` into a larger one by mapping each variant to the same position
+in the target type. `Narrow` projects a larger `Or` onto a smaller one, returning `Err(self)`
+when the active variant is not in the subset.
+
+```rust
+use orn::{Or1, Or2, Or3, Narrow, Widen};
+
+// inner_a and inner_b return errors from the same prefix subset of the outer type.
+fn inner_a() -> Result<(), Or2<String, std::io::Error>> {
+    Ok(())
+}
+
+fn inner_b() -> Result<(), Or1<String>> {
+    Ok(())
+}
+
+fn outer() -> Result<(), Or3<String, std::io::Error, std::num::ParseIntError>> {
+    // Or2<String, IoError> widens to Or3 — T0→T0, T1→T1
+    inner_a().map_err(Widen::widen)?;
+    // Or1<String> widens to Or3 — T0→T0
+    inner_b().map_err(Widen::widen)?;
+    Ok(())
+}
+
+fn narrow_example(v: Or3<u8, u16, u32>) -> Result<Or2<u8, u16>, Or3<u8, u16, u32>> {
+    v.narrow()
+}
+
+fn main() {
+    assert!(outer().is_ok());
+
+    // T0 and T1 are within the Or2 subset → Ok
+    assert_eq!(narrow_example(Or3::T0(1u8)), Ok(Or2::T0(1u8)));
+    assert_eq!(narrow_example(Or3::T1(2u16)), Ok(Or2::T1(2u16)));
+    // T2 is outside the Or2 subset → Err
+    assert_eq!(narrow_example(Or3::T2(99u32)), Err(Or3::T2(99u32)));
+}
 
 ```
