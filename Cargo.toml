@@ -1,6 +1,6 @@
 [package]
 name = "orn"
-version = "0.9.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Magicolo <magicololand@gmail.com>"]
 documentation = "https://docs.rs/orn/latest/orn/"
